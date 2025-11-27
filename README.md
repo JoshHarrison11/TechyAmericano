@@ -1,3 +1,16 @@
+# TechyAmericano - Padel Tournament App
+A comprehensive mobile-first tournament management application for Padel players and organizers. Track your progress, compete in tournaments, and climb the rankings with an intelligent ELO-based rating system.
+Key Features
+
+Player Profiles & Statistics - Detailed player tracking with performance analytics
+ELO Rating System - Fair and competitive ranking based on match results
+Tournament Management - Create and manage tournaments with ease
+Achievement System - Unlock achievements as you progress
+Match Analytics - Track your wins, losses, and performance trends
+Real-time Rankings - See where you stand against other players
+
+Built for Padel enthusiasts who want to take their game to the next level with data-driven insights and competitive tournament play.
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
