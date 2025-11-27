@@ -21,6 +21,19 @@ import {
 import { getEloTier } from './utils/eloService';
 import './App.css';
 
+/**
+ * Fisher-Yates shuffle algorithm
+ * Randomly shuffles an array in place
+ */
+const shuffleArray = (array) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 function App() {
   const [players, setPlayers] = useState([]);
   const [allRounds, setAllRounds] = useState([]);
@@ -159,7 +172,10 @@ function App() {
       };
     });
 
-    setPlayers(updatedPlayers);
+    // Randomize player order for variety in match sequences
+    const shuffledPlayers = shuffleArray(updatedPlayers);
+
+    setPlayers(shuffledPlayers);
     setRotationIndex(0);
     setGameStarted(true);
     startNextRound();
