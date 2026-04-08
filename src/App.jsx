@@ -43,6 +43,9 @@ function App() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [sitOuts, setSitOuts] = useState([]);
   const [rotationIndex, setRotationIndex] = useState(0);
+  const [lastSitOutIds, setLastSitOutIds] = useState([]);
+  const [sitOutPairHistory, setSitOutPairHistory] = useState({});
+  const [playerSitOutCounts, setPlayerSitOutCounts] = useState({});
   const [showSummary, setShowSummary] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [savedTournaments, setSavedTournaments] = useState([]);
@@ -99,6 +102,9 @@ function App() {
         history,
         sitOuts,
         rotationIndex,
+        lastSitOutIds,
+        sitOutPairHistory,
+        playerSitOutCounts,
         gameStarted,
         sessionEnded,
         currentTournamentId,
@@ -106,7 +112,7 @@ function App() {
       };
       localStorage.setItem('activeTournamentState', JSON.stringify(state));
     }
-  }, [players, allRounds, currentRoundIndex, history, sitOuts, gameStarted, sessionEnded, currentTournamentId, playersLastUpdated]);
+  }, [players, allRounds, currentRoundIndex, history, sitOuts, lastSitOutIds, sitOutPairHistory, playerSitOutCounts, gameStarted, sessionEnded, currentTournamentId, playersLastUpdated]);
 
   // Restore active tournament state on mount
   useEffect(() => {
@@ -121,6 +127,9 @@ function App() {
           setHistory(state.history);
           setSitOuts(state.sitOuts);
           setRotationIndex(state.rotationIndex || 0);
+          setLastSitOutIds(state.lastSitOutIds || []);
+          setSitOutPairHistory(state.sitOutPairHistory || {});
+          setPlayerSitOutCounts(state.playerSitOutCounts || {});
           setGameStarted(state.gameStarted);
           setSessionEnded(state.sessionEnded);
           setCurrentTournamentId(state.currentTournamentId);
@@ -177,6 +186,9 @@ function App() {
 
     setPlayers(shuffledPlayers);
     setRotationIndex(0);
+    setLastSitOutIds([]);
+    setSitOutPairHistory({});
+    setPlayerSitOutCounts({});
     setGameStarted(true);
     startNextRound();
   };
@@ -184,7 +196,7 @@ function App() {
   const startNextRound = () => {
     // Calculate max courts
     const courts = Math.floor(players.length / 4);
-    const { matches, sitOuts: sitting } = generateRound(players, history, courts, rotationIndex);
+    const { matches, sitOuts: sitting } = generateRound(players, history, courts, rotationIndex, lastSitOutIds, sitOutPairHistory, playerSitOutCounts);
 
     const newRound = {
       roundNumber: allRounds.length + 1,
@@ -195,6 +207,27 @@ function App() {
     setAllRounds([...allRounds, newRound]);
     setCurrentRoundIndex(allRounds.length);
     setSitOuts(sitting);
+
+    // Track who sat out this round so next round can avoid repeating back-to-back
+    const sittingIds = sitting.map(p => p.id);
+    setLastSitOutIds(sittingIds);
+
+    // Update pair history: increment count for every pair in this sit-out group
+    const updatedPairHistory = { ...sitOutPairHistory };
+    for (let i = 0; i < sittingIds.length; i++) {
+      for (let j = i + 1; j < sittingIds.length; j++) {
+        const pairKey = [sittingIds[i], sittingIds[j]].sort().join(',');
+        updatedPairHistory[pairKey] = (updatedPairHistory[pairKey] || 0) + 1;
+      }
+    }
+    setSitOutPairHistory(updatedPairHistory);
+
+    // Update individual sit-out counts
+    const updatedPlayerCounts = { ...playerSitOutCounts };
+    for (const id of sittingIds) {
+      updatedPlayerCounts[id] = (updatedPlayerCounts[id] || 0) + 1;
+    }
+    setPlayerSitOutCounts(updatedPlayerCounts);
 
     // Advance rotation index by the number of players sitting out
     const sitOutCount = players.length - (courts * 4);
@@ -393,6 +426,9 @@ function App() {
     setCurrentRoundIndex(-1);
     setSitOuts([]);
     setRotationIndex(0);
+    setLastSitOutIds([]);
+    setSitOutPairHistory({});
+    setPlayerSitOutCounts({});
     setShowSummary(false);
     setCurrentTournamentId(null);
     setPlayers([]);

@@ -94,15 +94,81 @@ const selectPairing = (players, history) => {
 };
 
 
-export const generateRound = (players, history, numberOfCourts, rotationIndex = 0) => {
-  // 1. Determine sitting players using rotation index
+export const generateRound = (players, history, numberOfCourts, rotationIndex = 0, lastSitOutIds = [], sitOutPairHistory = {}, playerSitOutCounts = {}) => {
+  // 1. Determine sitting players
   const playersNeeded = numberOfCourts * 4;
   const sitOutCount = players.length - playersNeeded;
 
   const sitOuts = [];
-  for (let i = 0; i < sitOutCount; i++) {
-    const sitOutIndex = (rotationIndex + i) % players.length;
-    sitOuts.push(players[sitOutIndex]);
+
+  if (sitOutCount <= 0) {
+    // No one sits out
+  } else if (sitOutCount >= players.length) {
+    // Edge case: everyone sits out (shouldn't happen)
+    sitOuts.push(...players);
+  } else {
+    // Score each player by sit-out priority (lower = better to sit out)
+    // Priority 1: Never repeat last round's sit-out (massive penalty)
+    // Priority 2: Equalise total sit-outs (huge penalty for having sat out more times overall)
+    // Priority 3: Avoid pairs that have sat out together before (moderate penalty per repeat)
+    // Priority 4: Fair rotation via rotationIndex as tiebreaker
+    const lastSitOutSet = new Set(lastSitOutIds);
+
+    // Build all combinations of `sitOutCount` players and pick the best one
+    const getCombinations = (arr, k) => {
+      if (k === 0) return [[]];
+      if (arr.length === 0) return [];
+      const [first, ...rest] = arr;
+      const withFirst = getCombinations(rest, k - 1).map(c => [first, ...c]);
+      const withoutFirst = getCombinations(rest, k);
+      return [...withFirst, ...withoutFirst];
+    };
+
+    const allCombinations = getCombinations(players, sitOutCount);
+
+    // Score a sit-out combination (lower = better)
+    const scoreCombination = (combo) => {
+      let score = 0;
+
+      for (const p of combo) {
+        // Penalty 1: Back-to-back sit outs (+100,000)
+        if (lastSitOutSet.has(p.id)) score += 100000;
+        
+        // Penalty 2: Total sit outs (+1,000 per previous sit-out)
+        // This mathematically ensures everyone sits out the same amount over time
+        const totalSitOutsForPlayer = playerSitOutCounts[p.id] || 0;
+        score += totalSitOutsForPlayer * 1000;
+
+        // Penalty 4: Tiebreaker rotation index
+        const idx = players.indexOf(p);
+        const rotationScore = ((idx - rotationIndex) % players.length + players.length) % players.length;
+        score += rotationScore;
+      }
+
+      // Penalty 3: Repeated pairs (+100 to break up recurrent sitting pairs)
+      for (let i = 0; i < combo.length; i++) {
+        for (let j = i + 1; j < combo.length; j++) {
+          const pairKey = [combo[i].id, combo[j].id].sort().join(',');
+          const pairCount = sitOutPairHistory[pairKey] || 0;
+          score += pairCount * 100; // 100 per previous time this pair sat out together
+        }
+      }
+
+      return score;
+    };
+
+    // Find the combination with the lowest score
+    let bestCombo = allCombinations[0];
+    let bestScore = scoreCombination(bestCombo);
+    for (const combo of allCombinations) {
+      const s = scoreCombination(combo);
+      if (s < bestScore) {
+        bestScore = s;
+        bestCombo = combo;
+      }
+    }
+
+    sitOuts.push(...bestCombo);
   }
 
   // 2. Select active players (those not sitting out)
