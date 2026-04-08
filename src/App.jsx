@@ -9,6 +9,7 @@ import PlayerProfile from './components/PlayerProfile';
 import HeadToHead from './components/HeadToHead';
 import DedicatedLeaderboard from './components/DedicatedLeaderboard';
 import TierChangeNotificationContainer from './components/TierChangeNotificationContainer';
+import GroupLogin from './components/GroupLogin';
 import { generateRound, clearPairingHistory } from './utils/americanoLogic';
 import {
   migrateExistingTournaments,
@@ -16,7 +17,8 @@ import {
   updatePlayerStats,
   createPlayer,
   getAllPlayers,
-  migrateEloData
+  migrateEloData,
+  syncFromSupabase
 } from './utils/playerService';
 import { getEloTier } from './utils/eloService';
 import './App.css';
@@ -58,6 +60,9 @@ function App() {
   const [selectedProfileId, setSelectedProfileId] = useState(null);
   const [showHeadToHead, setShowHeadToHead] = useState(false);
   const [playersLastUpdated, setPlayersLastUpdated] = useState(Date.now());
+  
+  // Group ID Tenant Settings
+  const [activeGroupId, setActiveGroupId] = useState(localStorage.getItem('padelGroupId') || null);
 
   // Tier change notifications
   const [tierChangeNotifications, setTierChangeNotifications] = useState([]);
@@ -75,7 +80,7 @@ function App() {
     }
   }, []);
 
-  // Run migration once on mount
+    // Run migration once on mount
   useEffect(() => {
     const result = migrateExistingTournaments();
     console.log('Migration result:', result);
@@ -83,7 +88,14 @@ function App() {
     // Run ELO migration
     const eloResult = migrateEloData();
     console.log('ELO migration result:', eloResult);
-  }, []);
+
+    // Sync cloud database if group exists
+    if (activeGroupId) {
+      syncFromSupabase(activeGroupId).then(() => {
+        setPlayersLastUpdated(Date.now());
+      });
+    }
+  }, [activeGroupId]);
 
   // Save tournaments to localStorage whenever they change
   useEffect(() => {
@@ -190,13 +202,30 @@ function App() {
     setSitOutPairHistory({});
     setPlayerSitOutCounts({});
     setGameStarted(true);
-    startNextRound();
+    
+    // Explicitly pass the fresh state directly, bypassing React's async batching
+    startNextRound(shuffledPlayers, {
+        rIdx: 0,
+        lId: [],
+        sPh: {},
+        pSc: {}
+    });
   };
 
-  const startNextRound = () => {
+  const startNextRound = (overridePlayers = null, overrideVars = null) => {
+    // React's onClick passes an Event object, which we must ignore.
+    const isOverrideValid = overridePlayers && Array.isArray(overridePlayers);
+    const currentPlayers = isOverrideValid ? overridePlayers : players;
+    
+    // Only use overrideVars if we actually received the valid array override
+    const currentRotationIndex = (isOverrideValid && overrideVars) ? overrideVars.rIdx : rotationIndex;
+    const currentLastSitOutIds = (isOverrideValid && overrideVars) ? overrideVars.lId : lastSitOutIds;
+    const currentSitOutPairHistory = (isOverrideValid && overrideVars) ? overrideVars.sPh : sitOutPairHistory;
+    const currentPlayerSitOutCounts = (isOverrideValid && overrideVars) ? overrideVars.pSc : playerSitOutCounts;
+
     // Calculate max courts
-    const courts = Math.floor(players.length / 4);
-    const { matches, sitOuts: sitting } = generateRound(players, history, courts, rotationIndex, lastSitOutIds, sitOutPairHistory, playerSitOutCounts);
+    const courts = Math.floor(currentPlayers.length / 4);
+    const { matches, sitOuts: sitting } = generateRound(currentPlayers, history, courts, currentRotationIndex, currentLastSitOutIds, currentSitOutPairHistory, currentPlayerSitOutCounts);
 
     const newRound = {
       roundNumber: allRounds.length + 1,
@@ -213,7 +242,7 @@ function App() {
     setLastSitOutIds(sittingIds);
 
     // Update pair history: increment count for every pair in this sit-out group
-    const updatedPairHistory = { ...sitOutPairHistory };
+    const updatedPairHistory = { ...currentSitOutPairHistory };
     for (let i = 0; i < sittingIds.length; i++) {
       for (let j = i + 1; j < sittingIds.length; j++) {
         const pairKey = [sittingIds[i], sittingIds[j]].sort().join(',');
@@ -223,15 +252,15 @@ function App() {
     setSitOutPairHistory(updatedPairHistory);
 
     // Update individual sit-out counts
-    const updatedPlayerCounts = { ...playerSitOutCounts };
+    const updatedPlayerCounts = { ...currentPlayerSitOutCounts };
     for (const id of sittingIds) {
       updatedPlayerCounts[id] = (updatedPlayerCounts[id] || 0) + 1;
     }
     setPlayerSitOutCounts(updatedPlayerCounts);
 
     // Advance rotation index by the number of players sitting out
-    const sitOutCount = players.length - (courts * 4);
-    setRotationIndex((rotationIndex + sitOutCount) % players.length);
+    const sitOutCount = currentPlayers.length - (courts * 4);
+    setRotationIndex((currentRotationIndex + sitOutCount) % currentPlayers.length);
   };
 
   const updateScore = (matchId, teamIndex, score) => {
@@ -482,8 +511,34 @@ function App() {
 
   const roundComplete = currentRoundMatches.length > 0 && currentRoundMatches.every(m => m.completed || m.skipped);
 
+  if (!activeGroupId) {
+    return (
+        <GroupLogin onLogin={(id) => {
+            localStorage.setItem('padelGroupId', id);
+            setActiveGroupId(id);
+        }} />
+    );
+  }
+
   return (
     <div className="app-container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '0.5rem', padding: '0.5rem 0.25rem', borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
+        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>League: <strong style={{color: '#text'}}>{activeGroupId}</strong></span>
+        <button 
+            onClick={() => { 
+                localStorage.removeItem('padelGroupId'); 
+                localStorage.removeItem('padelPlayers');
+                localStorage.removeItem('padelMatchHistory');
+                localStorage.removeItem('padelTournaments');
+                localStorage.removeItem('activeTournamentState');
+                setActiveGroupId(null); 
+            }}
+            style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.85rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+        >
+            Switch League
+        </button>
+      </div>
+
       <header>
         <h1>🎾 Techy Americano</h1>
 

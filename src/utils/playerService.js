@@ -11,6 +11,7 @@ import {
     getPlayerRank,
     getEloTier
 } from './eloService.js';
+import { supabase } from './supabaseClient.js';
 
 const STORAGE_KEYS = {
     PLAYERS: 'padelPlayers',
@@ -83,21 +84,70 @@ export const updatePlayer = (playerId, updates) => {
     return players[index];
 };
 
+const deletePlayerFromSupabase = async (playerId) => {
+    try {
+        const { error } = await supabase.from('players').delete().eq('id', playerId);
+        if (error) console.error('Supabase player delete error:', error);
+    } catch (e) {
+        console.error('Supabase delete catch:', e);
+    }
+};
+
+const deleteMatchesFromSupabase = async (matchIds) => {
+    if (!matchIds || matchIds.length === 0) return;
+    try {
+        const { error } = await supabase.from('matches').delete().in('id', matchIds);
+        if (error) console.error('Supabase matches delete error:', error);
+    } catch (e) {
+        console.error('Supabase match delete catch:', e);
+    }
+};
+
+
 export const deletePlayer = (playerId) => {
     const players = getAllPlayers();
     const filtered = players.filter(p => p.id !== playerId);
     savePlayersToStorage(filtered);
+    deletePlayerFromSupabase(playerId);
 
     const matches = getAllMatches();
     const filteredMatches = matches.filter(m =>
         !m.teams.flat().includes(playerId)
     );
     saveMatchesToStorage(filteredMatches);
+    const matchesToDelete = matches.filter(m => m.teams.flat().includes(playerId));
+    if (matchesToDelete.length > 0) {
+        deleteMatchesFromSupabase(matchesToDelete.map(m => m.id.toString()));
+    }
+};
+
+const pushPlayersToSupabase = async (players) => {
+    try {
+        const groupId = localStorage.getItem('padelGroupId');
+        if (!groupId) return;
+
+        const payload = players.map(p => ({
+            id: p.id,
+            group_id: groupId,
+            name: p.name,
+            avatar: p.avatar,
+            created_at: p.createdAt,
+            stats: p.stats,
+            elo: p.elo,
+            badges: p.badges
+        }));
+        const { error } = await supabase.from('players').upsert(payload);
+        if (error) console.error('Supabase players sync error:', error);
+    } catch (e) {
+        console.error('Supabase background sync catch:', e);
+    }
 };
 
 const savePlayersToStorage = (players) => {
     try {
         localStorage.setItem(STORAGE_KEYS.PLAYERS, JSON.stringify(players));
+        // Optimistic background sync!
+        pushPlayersToSupabase(players);
     } catch (error) {
         console.error('Error saving players:', error);
     }
@@ -122,9 +172,34 @@ export const getMatchesByPlayer = (playerId) => {
     return matches.filter(m => m.teams.flat().includes(playerId));
 };
 
+const pushMatchesToSupabase = async (matches) => {
+    try {
+        const groupId = localStorage.getItem('padelGroupId');
+        if (!groupId) return;
+
+        const payload = matches.map(m => ({
+            id: m.id.toString(), // Ensure string ID for database
+            group_id: groupId,
+            tournament_id: m.tournamentId?.toString() || null,
+            date: m.date,
+            teams: m.teams,
+            score: m.score,
+            completed: m.completed,
+            players: m.players,
+            elo_data: m.eloData
+        }));
+        const { error } = await supabase.from('matches').upsert(payload);
+        if (error) console.error('Supabase matches sync error:', error);
+    } catch (e) {
+        console.error('Supabase background sync catch:', e);
+    }
+};
+
 export const saveMatchesToStorage = (matches) => {
     try {
         localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(matches));
+        // Optimistic background sync!
+        pushMatchesToSupabase(matches);
     } catch (error) {
         console.error('Error saving match history:', error);
     }
@@ -450,3 +525,56 @@ export const migrateEloData = () => ({ success: true });
 export const exportData = () => '{}';
 export const importData = () => ({ success: false });
 export const clearAllData = () => { };
+
+// ============================================================================
+// Cloud Database Synchronization
+// ============================================================================
+
+export const syncFromSupabase = async (groupId) => {
+    if (!groupId) return false;
+    
+    try {
+        console.log(`Syncing from Supabase for group ${groupId}...`);
+
+        // 1. Pull Players
+        const { data: remotePlayers, error: pError } = await supabase.from('players').select('*').eq('group_id', groupId);
+        if (pError) throw pError;
+
+        if (remotePlayers && remotePlayers.length > 0) {
+            const mappedPlayers = remotePlayers.map(p => ({
+                id: p.id,
+                name: p.name,
+                avatar: p.avatar,
+                createdAt: p.created_at,
+                stats: p.stats,
+                elo: p.elo,
+                badges: p.badges
+            }));
+            localStorage.setItem(STORAGE_KEYS.PLAYERS, JSON.stringify(mappedPlayers));
+        }
+
+        // 2. Pull Matches
+        const { data: remoteMatches, error: mError } = await supabase.from('matches').select('*').eq('group_id', groupId);
+        if (mError) throw mError;
+
+        if (remoteMatches && remoteMatches.length > 0) {
+            const mappedMatches = remoteMatches.map(m => ({
+                id: m.id.includes('_') ? m.id : parseInt(m.id, 10) || m.id, // Handle legacy numeric IDs
+                tournamentId: m.tournament_id,
+                date: m.date,
+                teams: m.teams,
+                score: m.score,
+                completed: m.completed,
+                players: m.players,
+                eloData: m.elo_data
+            }));
+            localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(mappedMatches));
+        }
+
+        console.log(`Sync complete: ${remotePlayers?.length || 0} players, ${remoteMatches?.length || 0} matches.`);
+        return true;
+    } catch (e) {
+        console.error('Initial sync failed from Supabase:', e);
+        return false;
+    }
+};
