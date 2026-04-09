@@ -23,24 +23,24 @@ const AIMatchReport = ({ players, history, allRounds }) => {
         losses: 0,
         gamesFor: 0,
         gamesAgainst: 0,
-        eloChange: Math.round((p.finalElo ?? p.elo ?? 1500) - (p.startingElo ?? p.elo ?? 1500)),
+        eloChange: Math.round((p.finalElo ?? p.elo?.current ?? 1500) - (p.startingElo ?? p.elo?.current ?? 1500)),
       };
     });
 
     completedMatches.forEach(match => {
-      const s1 = match.team1Score ?? 0;
-      const s2 = match.team2Score ?? 0;
+      const s1 = match.score?.[0] ?? 0;
+      const s2 = match.score?.[1] ?? 0;
       const t1won = s1 > s2;
       const t2won = s2 > s1;
 
-      (match.team1 || []).forEach(pid => {
+      (match.teams?.[0] || []).forEach(pid => {
         if (!stats[pid]) return;
         if (t1won) stats[pid].wins++;
         else if (t2won) stats[pid].losses++;
         stats[pid].gamesFor += s1;
         stats[pid].gamesAgainst += s2;
       });
-      (match.team2 || []).forEach(pid => {
+      (match.teams?.[1] || []).forEach(pid => {
         if (!stats[pid]) return;
         if (t2won) stats[pid].wins++;
         else if (t1won) stats[pid].losses++;
@@ -52,9 +52,9 @@ const AIMatchReport = ({ players, history, allRounds }) => {
     const getName = id => playerMap[id]?.name ?? id;
 
     const matchLines = completedMatches.map((m, i) => {
-      const t1 = (m.team1 || []).map(getName).join(' & ');
-      const t2 = (m.team2 || []).map(getName).join(' & ');
-      return `Match ${i + 1}: ${t1} ${m.team1Score ?? 0}-${m.team2Score ?? 0} ${t2}`;
+      const t1 = (m.teams?.[0] || []).map(getName).join(' & ');
+      const t2 = (m.teams?.[1] || []).map(getName).join(' & ');
+      return `Match ${i + 1}: ${t1} ${m.score?.[0] ?? 0}-${m.score?.[1] ?? 0} ${t2}`;
     }).join('\n');
 
     const playerLines = Object.values(stats)
@@ -65,12 +65,12 @@ const AIMatchReport = ({ players, history, allRounds }) => {
       }).join('\n');
 
     const motd = completedMatches.reduce((closest, m) => {
-      const diff = Math.abs((m.team1Score ?? 0) - (m.team2Score ?? 0));
-      const closestDiff = Math.abs((closest.team1Score ?? 0) - (closest.team2Score ?? 0));
+      const diff = Math.abs((m.score?.[0] ?? 0) - (m.score?.[1] ?? 0));
+      const closestDiff = Math.abs((closest.score?.[0] ?? 0) - (closest.score?.[1] ?? 0));
       return diff < closestDiff ? m : closest;
     }, completedMatches[0]);
-    const motdT1 = (motd.team1 || []).map(getName).join(' & ');
-    const motdT2 = (motd.team2 || []).map(getName).join(' & ');
+    const motdT1 = (motd.teams?.[0] || []).map(getName).join(' & ');
+    const motdT2 = (motd.teams?.[1] || []).map(getName).join(' & ');
 
     return `You are a sports journalist writing a post-session match report for a WhatsApp group of padel tennis players. Keep it punchy, fun, and under 350 words. Use banter tone — savage but light-hearted, not mean.
 
@@ -86,7 +86,7 @@ A dramatic one-liner headline for the session.
 Rate each player out of 10 with one savage but fair one-liner based purely on their actual results. Format each line as: **PlayerName** — X/10 — one-liner
 
 ## MATCH OF THE DAY
-The closest scoreline was ${motdT1} ${motd.team1Score ?? 0}-${motd.team2Score ?? 0} ${motdT2}. Comment on it in 1-2 sentences.
+The closest scoreline was ${motdT1} ${motd.score?.[0] ?? 0}-${motd.score?.[1] ?? 0} ${motdT2}. Comment on it in 1-2 sentences.
 
 ## FINAL VERDICT
 One punchy closing sentence summing up the session.
