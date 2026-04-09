@@ -10,6 +10,7 @@ import HeadToHead from './components/HeadToHead';
 import DedicatedLeaderboard from './components/DedicatedLeaderboard';
 import TierChangeNotificationContainer from './components/TierChangeNotificationContainer';
 import GroupLogin from './components/GroupLogin';
+import AIMatchReport from './components/AIMatchReport';
 import { generateRound, clearPairingHistory } from './utils/americanoLogic';
 import {
   migrateExistingTournaments,
@@ -610,6 +611,8 @@ function App() {
               <h2>🏆 Tournament Complete</h2>
               <p className="session-subtitle">Review the results below</p>
             </div>
+
+            <AIMatchReport players={players} history={history} allRounds={allRounds} />
 
             {allRounds.length > 0 && (
               <div className="round-navigation">
