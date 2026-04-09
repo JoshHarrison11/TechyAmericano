@@ -115,6 +115,8 @@ Total matches played: ${completedMatches.length}`;
     setError('');
     abortRef.current = new AbortController();
 
+    const prompt = buildPrompt();
+
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`,
@@ -123,7 +125,7 @@ Total matches played: ${completedMatches.length}`;
           signal: abortRef.current.signal,
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: buildPrompt() }] }],
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: { maxOutputTokens: 1024 },
           }),
         }
