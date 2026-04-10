@@ -19,7 +19,8 @@ import {
   createPlayer,
   getAllPlayers,
   migrateEloData,
-  syncFromSupabase
+  syncFromSupabase,
+  saveTournamentsToStorage
 } from './utils/playerService';
 import { getEloTier } from './utils/eloService';
 import './App.css';
@@ -98,10 +99,10 @@ function App() {
     }
   }, [activeGroupId]);
 
-  // Save tournaments to localStorage whenever they change
+  // Save tournaments to localStorage + Supabase whenever they change
   useEffect(() => {
     if (savedTournaments.length > 0) {
-      localStorage.setItem('padelTournaments', JSON.stringify(savedTournaments));
+      saveTournamentsToStorage(savedTournaments);
     }
   }, [savedTournaments]);
 

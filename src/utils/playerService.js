@@ -205,6 +205,40 @@ export const saveMatchesToStorage = (matches) => {
     }
 };
 
+// ============================================================================
+// Tournament Operations
+// ============================================================================
+
+const pushTournamentsToSupabase = async (tournaments) => {
+    try {
+        const groupId = localStorage.getItem('padelGroupId');
+        if (!groupId) return;
+
+        const payload = tournaments.map(t => ({
+            id: t.id.toString(),
+            group_id: groupId,
+            date: t.date,
+            players: t.players,
+            rounds: t.rounds,
+            history: t.history,
+            sit_outs: t.sitOuts
+        }));
+        const { error } = await supabase.from('tournaments').upsert(payload);
+        if (error) console.error('Supabase tournaments sync error:', error);
+    } catch (e) {
+        console.error('Supabase tournaments sync catch:', e);
+    }
+};
+
+export const saveTournamentsToStorage = (tournaments) => {
+    try {
+        localStorage.setItem(STORAGE_KEYS.TOURNAMENTS, JSON.stringify(tournaments));
+        pushTournamentsToSupabase(tournaments);
+    } catch (error) {
+        console.error('Error saving tournaments:', error);
+    }
+};
+
 export const addMatchToHistory = (match, tournamentId) => {
     const matches = getAllMatches();
     const players = getAllPlayers();
@@ -571,7 +605,23 @@ export const syncFromSupabase = async (groupId) => {
             localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(mappedMatches));
         }
 
-        console.log(`Sync complete: ${remotePlayers?.length || 0} players, ${remoteMatches?.length || 0} matches.`);
+        // 3. Pull Tournaments
+        const { data: remoteTournaments, error: tError } = await supabase.from('tournaments').select('*').eq('group_id', groupId);
+        if (tError) throw tError;
+
+        if (remoteTournaments && remoteTournaments.length > 0) {
+            const mappedTournaments = remoteTournaments.map(t => ({
+                id: t.id,
+                date: t.date,
+                players: t.players,
+                rounds: t.rounds,
+                history: t.history,
+                sitOuts: t.sit_outs
+            }));
+            localStorage.setItem(STORAGE_KEYS.TOURNAMENTS, JSON.stringify(mappedTournaments));
+        }
+
+        console.log(`Sync complete: ${remotePlayers?.length || 0} players, ${remoteMatches?.length || 0} matches, ${remoteTournaments?.length || 0} tournaments.`);
         return true;
     } catch (e) {
         console.error('Initial sync failed from Supabase:', e);
