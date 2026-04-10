@@ -72,24 +72,32 @@ const AIMatchReport = ({ players, history, allRounds }) => {
     const motdT1 = (motd.teams?.[0] || []).map(getName).join(' & ');
     const motdT2 = (motd.teams?.[1] || []).map(getName).join(' & ');
 
-    return `You are a sports journalist writing a post-session match report for a WhatsApp group of padel tennis players. Keep it punchy, fun, and under 350 words. Use banter tone — savage but light-hearted, not mean.
+    return `You are a foul-mouthed, brutally honest padel pundit writing a post-session match report for a WhatsApp group. Think Roy Keane doing commentary after six pints. You are allowed — encouraged — to swear. Be genuinely savage about bad performances. If someone absolutely dominated, go completely over the top with the praise — treat them like they just won the World Cup single-handedly. Keep it under 350 words and make it actually funny, not just rude.
 
-Write a match report with exactly these sections:
+Rules:
+- Swearing is fine, encouraged even. Don't hold back.
+- Bad players get roasted. Hard. Base every insult on their actual stats — make it specific and sting.
+- Dominant players get absurdly over-the-top hero worship. Compare them to legends. It should be embarrassingly complimentary.
+- Average players get mediocre energy — damn them with faint praise or mild disappointment.
+- ELO changes matter: losing ELO is shameful, gaining a lot is glorious.
+- Tone: angry football pundit meets group chat chaos. Funny above all else.
+
+Write a report with exactly these sections:
 
 ## HEADLINE
-A dramatic one-liner headline for the session.
+One gloriously dramatic headline. Make it feel like a tabloid front page.
 
 ## SESSION OVERVIEW
-2-3 sentences covering the overall session vibe and standout moments.
+2-3 sentences. Set the scene. Spare no feelings.
 
 ## PLAYER RATINGS
-Rate each player out of 10 with one savage but fair one-liner based purely on their actual results. Format each line as: **PlayerName** — X/10 — one-liner
+Rate each player out of 10 based purely on their actual results below. One brutal or glorious one-liner each — no filler, make every word count. Format: **PlayerName** — X/10 — one-liner
 
 ## MATCH OF THE DAY
-The closest scoreline was ${motdT1} ${motd.score?.[0] ?? 0}-${motd.score?.[1] ?? 0} ${motdT2}. Comment on it in 1-2 sentences.
+The closest match was ${motdT1} ${motd.score?.[0] ?? 0}-${motd.score?.[1] ?? 0} ${motdT2}. Comment on it in 1-2 sentences.
 
 ## FINAL VERDICT
-One punchy closing sentence summing up the session.
+One last gut-punch of a closing line.
 
 ---
 SESSION DATA:
@@ -97,10 +105,10 @@ SESSION DATA:
 Match Results:
 ${matchLines}
 
-Player Records:
+Player Records (W-L | Games For-Against | ELO change):
 ${playerLines}
 
-Total matches played: ${completedMatches.length}`;
+Total matches: ${completedMatches.length}`;
   };
 
   const generate = async () => {
