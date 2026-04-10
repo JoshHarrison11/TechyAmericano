@@ -199,6 +199,7 @@ function App() {
     const shuffledPlayers = shuffleArray(updatedPlayers);
 
     setPlayers(shuffledPlayers);
+    setCurrentTournamentId(Date.now().toString());
     setRotationIndex(0);
     setLastSitOutIds([]);
     setSitOutPairHistory({});
