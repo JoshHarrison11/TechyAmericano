@@ -239,6 +239,39 @@ export const saveTournamentsToStorage = (tournaments) => {
     }
 };
 
+// Delete specific tournaments and their matches from Supabase, and clean up localStorage matches
+export const deleteTournamentsFromSupabase = async (tournamentIds) => {
+    if (!tournamentIds || tournamentIds.length === 0) return;
+    const ids = tournamentIds.map(String);
+    try {
+        const { error: tError } = await supabase.from('tournaments').delete().in('id', ids);
+        if (tError) console.error('Supabase tournament delete error:', tError);
+        const { error: mError } = await supabase.from('matches').delete().in('tournament_id', ids);
+        if (mError) console.error('Supabase tournament matches delete error:', mError);
+    } catch (e) {
+        console.error('Supabase tournament delete catch:', e);
+    }
+    // Prune orphaned matches from localStorage
+    const matches = getAllMatches();
+    const filtered = matches.filter(m => !ids.includes(String(m.tournamentId)));
+    localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(filtered));
+};
+
+// Delete all tournaments and matches for a group from Supabase + localStorage
+export const clearAllGroupDataFromSupabase = async (groupId) => {
+    if (!groupId) return;
+    try {
+        const { error: tError } = await supabase.from('tournaments').delete().eq('group_id', groupId);
+        if (tError) console.error('Supabase clear tournaments error:', tError);
+        const { error: mError } = await supabase.from('matches').delete().eq('group_id', groupId);
+        if (mError) console.error('Supabase clear matches error:', mError);
+    } catch (e) {
+        console.error('Supabase clear all catch:', e);
+    }
+    localStorage.removeItem(STORAGE_KEYS.TOURNAMENTS);
+    localStorage.removeItem(STORAGE_KEYS.MATCH_HISTORY);
+};
+
 export const addMatchToHistory = (match, tournamentId) => {
     const matches = getAllMatches();
     const players = getAllPlayers();

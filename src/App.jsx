@@ -20,7 +20,9 @@ import {
   getAllPlayers,
   migrateEloData,
   syncFromSupabase,
-  saveTournamentsToStorage
+  saveTournamentsToStorage,
+  deleteTournamentsFromSupabase,
+  clearAllGroupDataFromSupabase
 } from './utils/playerService';
 import { getEloTier } from './utils/eloService';
 import './App.css';
@@ -483,7 +485,7 @@ function App() {
 
   const deleteTournament = (tournamentId) => {
     setSavedTournaments(prev => prev.filter(t => t.id !== tournamentId));
-    // If we're viewing the deleted tournament, reset
+    deleteTournamentsFromSupabase([tournamentId]);
     if (currentTournamentId === tournamentId) {
       resetSession();
     }
@@ -760,7 +762,7 @@ function App() {
             onClearAll={() => {
               if (window.confirm('Are you sure you want to clear all tournament history?')) {
                 setSavedTournaments([]);
-                localStorage.removeItem('padelTournaments');
+                clearAllGroupDataFromSupabase(activeGroupId);
               }
             }}
           />
