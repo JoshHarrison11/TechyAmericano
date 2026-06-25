@@ -272,6 +272,54 @@ export const clearAllGroupDataFromSupabase = async (groupId) => {
     localStorage.removeItem(STORAGE_KEYS.MATCH_HISTORY);
 };
 
+// Reset a league's stats WITHOUT deleting the league or its players.
+// Players keep their name/avatar but have stats + ELO + badges wiped, and all
+// tournaments and matches for the group are removed (localStorage + Supabase).
+export const resetGroupStats = async (groupId) => {
+    if (!groupId) return false;
+
+    // 1. Reset every player's stats / ELO / badges (keep identity)
+    const players = getAllPlayers();
+    const resetPlayers = players.map(p => ({
+        ...p,
+        stats: {
+            tournamentsPlayed: 0,
+            matchesPlayed: 0,
+            matchesWon: 0,
+            matchesLost: 0,
+            wins: 0,
+            losses: 0,
+            gamesWon: 0,
+            gamesLost: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            firstTournamentDate: null,
+            lastTournamentDate: null
+        },
+        elo: initializePlayerElo(),
+        badges: []
+    }));
+    // Saves locally AND upserts the reset players to Supabase
+    savePlayersToStorage(resetPlayers);
+
+    // 2. Wipe matches + tournaments locally
+    localStorage.removeItem(STORAGE_KEYS.MATCH_HISTORY);
+    localStorage.removeItem(STORAGE_KEYS.TOURNAMENTS);
+    localStorage.removeItem('activeTournamentState');
+
+    // 3. Delete matches + tournaments for this group from Supabase
+    try {
+        const { error: mError } = await supabase.from('matches').delete().eq('group_id', groupId);
+        if (mError) console.error('Supabase reset matches error:', mError);
+        const { error: tError } = await supabase.from('tournaments').delete().eq('group_id', groupId);
+        if (tError) console.error('Supabase reset tournaments error:', tError);
+    } catch (e) {
+        console.error('Supabase reset catch:', e);
+    }
+
+    return true;
+};
+
 export const addMatchToHistory = (match, tournamentId) => {
     const matches = getAllMatches();
     const players = getAllPlayers();

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import PlayerCard from './PlayerCard';
 import { getAllPlayers, createPlayer, deletePlayer, calculatePlayerStats } from '../utils/playerService';
 
-const PlayerManagement = ({ onViewProfile, onClose }) => {
+const PlayerManagement = ({ onViewProfile, onClose, onResetStats }) => {
     const [players, setPlayers] = useState(getAllPlayers());
     const [newPlayerName, setNewPlayerName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -133,6 +133,16 @@ const PlayerManagement = ({ onViewProfile, onClose }) => {
                         })
                     )}
                 </div>
+
+                {onResetStats && (
+                    <div className="danger-zone">
+                        <div className="danger-zone-text">
+                            <span className="danger-zone-title">Danger Zone</span>
+                            <span className="danger-zone-sub">Reset all player stats and clear every tournament. Players and the league are kept.</span>
+                        </div>
+                        <button onClick={onResetStats} className="btn btn-danger">Reset League Stats</button>
+                    </div>
+                )}
 
                 <div className="modal-actions">
                     <button onClick={onClose} className="btn btn-secondary">Close</button>

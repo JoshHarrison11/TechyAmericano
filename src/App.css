@@ -898,6 +898,19 @@ h2 {
 @keyframes ai-cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .ai-report-error { padding: 1rem 1.25rem; color: var(--danger); font-size: 0.875rem; border-top: 1px solid var(--border); }
 
+/* ── Danger zone & reset-stats modal ────────────────────── */
+.danger-zone { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; padding: 1rem 1.1rem; background: rgba(255,77,94,0.06); border: 1px solid rgba(255,77,94,0.28); border-radius: var(--radius); }
+.danger-zone-text { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; flex: 1; text-align: left; }
+.danger-zone-title { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--danger); font-size: 0.85rem; }
+.danger-zone-sub { font-size: 0.8rem; color: var(--text-muted); }
+
+.reset-stats-modal { max-width: 460px !important; text-align: left !important; }
+.reset-warning { color: var(--text-muted); line-height: 1.6; margin-bottom: 1.25rem; }
+.reset-warning strong { color: var(--text); }
+.reset-label { display: block; font-size: 0.9rem; color: var(--text); margin-bottom: 0.5rem; }
+.reset-label strong { font-family: var(--font-display); color: var(--danger); text-transform: uppercase; letter-spacing: 0.03em; }
+.reset-input { width: 100%; margin-bottom: 0.5rem; }
+
 /* Custom game button (tournament round) */
 .custom-game-bar { display: flex; justify-content: center; margin-bottom: 1.5rem; }
 .custom-game-modal { max-width: 520px !important; max-height: 90vh; overflow-y: auto; }

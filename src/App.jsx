@@ -13,6 +13,7 @@ import GroupLogin from './components/GroupLogin';
 import AIMatchReport from './components/AIMatchReport';
 import CompetitiveMode from './components/CompetitiveMode';
 import CustomGameModal from './components/CustomGameModal';
+import ResetStatsModal from './components/ResetStatsModal';
 import { generateRound, clearPairingHistory } from './utils/americanoLogic';
 import {
   migrateExistingTournaments,
@@ -24,7 +25,8 @@ import {
   syncFromSupabase,
   saveTournamentsToStorage,
   deleteTournamentsFromSupabase,
-  clearAllGroupDataFromSupabase
+  clearAllGroupDataFromSupabase,
+  resetGroupStats
 } from './utils/playerService';
 import { getEloTier } from './utils/eloService';
 import './App.css';
@@ -64,6 +66,9 @@ function App() {
 
   // Custom game picker (manual teams within a tournament round)
   const [showCustomGame, setShowCustomGame] = useState(false);
+
+  // League-wide stats reset (type-to-confirm)
+  const [showResetStats, setShowResetStats] = useState(false);
 
   // Player profile system states
   const [currentView, setCurrentView] = useState('tournament'); // 'tournament', 'players', 'h2h'
@@ -578,6 +583,18 @@ function App() {
     setPlayersLastUpdated(Date.now()); // Refresh players
   };
 
+  const handleResetStats = async () => {
+    await resetGroupStats(activeGroupId);
+    // Wipe local session/UI state so the app reflects the cleared league
+    resetSession();
+    setSavedTournaments([]);
+    setShowResetStats(false);
+    setShowPlayerManagement(false);
+    setShowHistory(false);
+    setCurrentView('tournament');
+    setPlayersLastUpdated(Date.now());
+  };
+
   // Get current round data
   const currentRound = allRounds[currentRoundIndex];
   const currentRoundMatches = currentRound?.matches || [];
@@ -833,11 +850,20 @@ function App() {
         {showPlayerManagement && (
           <PlayerManagement
             onViewProfile={handleViewProfile}
+            onResetStats={() => setShowResetStats(true)}
             onClose={() => {
               setShowPlayerManagement(false);
               setCurrentView('tournament');
               setPlayersLastUpdated(Date.now()); // Refresh players
             }}
+          />
+        )}
+
+        {showResetStats && (
+          <ResetStatsModal
+            groupId={activeGroupId}
+            onConfirm={handleResetStats}
+            onClose={() => setShowResetStats(false)}
           />
         )}
 
