@@ -45,48 +45,46 @@ export default function GroupLogin({ onLogin }) {
     };
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '400px', margin: '10vh auto', textAlign: 'center', backgroundColor: '#1e293b', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-            <h1 style={{ color: 'white', marginBottom: '1rem' }}>Padel Groups</h1>
-            <p style={{ color: '#94a3b8', marginBottom: '2rem', fontSize: '0.9rem' }}>
-                Enter your private group ID to access your tournament data, or create a brand new league.
-            </p>
-            
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <input 
-                    type="text" 
-                    placeholder={isCreating ? "Choose a unique Group ID..." : "Enter your Group ID..."}
-                    value={groupId} 
-                    onChange={e => setGroupId(e.target.value)}
-                    style={{ padding: '0.75rem', fontSize: '1rem', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: 'white' }}
-                />
-                
-                {error && <div style={{ color: '#ef4444', fontSize: '0.9rem', textAlign: 'left' }}>{error}</div>}
-                
-                <button 
-                    type="submit" 
-                    disabled={loading || !groupId.trim()}
-                    style={{ 
-                        padding: '0.75rem', 
-                        fontSize: '1rem', 
-                        fontWeight: 'bold',
-                        backgroundColor: loading || !groupId.trim() ? '#475569' : '#3b82f6', 
-                        color: 'white', 
-                        borderRadius: '8px', 
-                        border: 'none', 
-                        cursor: loading || !groupId.trim() ? 'not-allowed' : 'pointer',
-                        transition: 'background-color 0.2s'
-                    }}
-                >
-                    {loading ? 'Entering Court...' : (isCreating ? 'Create League' : 'Enter League')}
-                </button>
-            </form>
+        <div className="group-login-screen">
+            <div className="group-login-card">
+                <div className="group-login-logo">🎾 Techy Americano</div>
+                <h1 className="group-login-title">{isCreating ? 'New League' : 'Enter League'}</h1>
+                <p className="group-login-sub">
+                    {isCreating
+                        ? 'Pick a unique ID for your crew. Track every match, climb the ELO ladder, settle the score.'
+                        : 'Enter your private league ID to load your players, tournaments and rankings.'}
+                </p>
 
-            <button 
-                onClick={() => { setIsCreating(!isCreating); setError(''); setGroupId(''); }}
-                style={{ marginTop: '1.5rem', background: 'none', border: 'none', color: '#94a3b8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-                {isCreating ? 'Already have a group? Enter here.' : 'Need a new group? Create one here.'}
-            </button>
+                <form onSubmit={handleSubmit} className="group-login-form">
+                    <input
+                        type="text"
+                        className="input-field"
+                        placeholder={isCreating ? "Choose a unique Group ID..." : "Enter your Group ID..."}
+                        value={groupId}
+                        onChange={e => setGroupId(e.target.value)}
+                        autoFocus
+                    />
+
+                    {error && <div className="group-login-error">{error}</div>}
+
+                    <button
+                        type="submit"
+                        disabled={loading || !groupId.trim()}
+                        className="btn btn-primary btn-lg"
+                    >
+                        {loading ? 'Entering Court…' : (isCreating ? 'Create League' : 'Enter League')}
+                    </button>
+                </form>
+
+                <button
+                    className="group-login-toggle"
+                    onClick={() => { setIsCreating(!isCreating); setError(''); setGroupId(''); }}
+                >
+                    {isCreating
+                        ? <>Already have a league? <strong>Sign in</strong></>
+                        : <>Need a new league? <strong>Create one</strong></>}
+                </button>
+            </div>
         </div>
     );
 }

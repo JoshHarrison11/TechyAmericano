@@ -527,58 +527,33 @@ function App() {
 
   return (
     <div className="app-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '0.5rem', padding: '0.5rem 0.25rem', borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
-        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>League: <strong style={{color: '#text'}}>{activeGroupId}</strong></span>
-        <button 
-            onClick={() => { 
-                localStorage.removeItem('padelGroupId'); 
+      <div className="topbar">
+        <span className="topbar-league">
+          <span className="dot" />
+          League: <strong>{activeGroupId}</strong>
+        </span>
+        <button
+            className="topbar-switch"
+            onClick={() => {
+                localStorage.removeItem('padelGroupId');
                 localStorage.removeItem('padelPlayers');
                 localStorage.removeItem('padelMatchHistory');
                 localStorage.removeItem('padelTournaments');
                 localStorage.removeItem('activeTournamentState');
-                setActiveGroupId(null); 
+                setActiveGroupId(null);
             }}
-            style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.85rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
         >
             Switch League
         </button>
       </div>
 
       <header>
-        <h1>🎾 Techy Americano</h1>
-
-        {!gameStarted && (
-          <div className="navigation-tabs">
-            <button
-              className={`nav-tab ${currentView === 'tournament' ? 'active' : ''}`}
-              onClick={() => setCurrentView('tournament')}
-            >
-              Tournament
-            </button>
-            <button
-              className={`nav-tab ${currentView === 'leaderboard' ? 'active' : ''}`}
-              onClick={() => setCurrentView('leaderboard')}
-            >
-              🏆 Leaderboard
-            </button>
-            <button
-              className={`nav-tab ${currentView === 'players' ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentView('players');
-                setShowPlayerManagement(true);
-              }}
-            >
-              Players ({getAllPlayers().length})
-            </button>
-            <button
-              className={`nav-tab ${currentView === 'h2h' ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentView('h2h');
-                setShowHeadToHead(true);
-              }}
-            >
-              Head-to-Head
-            </button>
+        <div className="brand-row">
+          <h1>🎾 Techy Americano</h1>
+        </div>
+        {gameStarted && !sessionEnded && (
+          <div className="live-pill">
+            <span className="live-dot" /> Live Tournament
           </div>
         )}
       </header>
@@ -796,6 +771,46 @@ function App() {
           />
         )}
       </main>
+
+      {/* Mobile-first bottom navigation */}
+      {!gameStarted && (
+        <nav className="bottom-nav">
+          <button
+            className={`bottom-nav-item ${currentView === 'tournament' ? 'active' : ''}`}
+            onClick={() => setCurrentView('tournament')}
+          >
+            <span className="bn-icon">🎾</span>
+            <span className="bn-label">Play</span>
+          </button>
+          <button
+            className={`bottom-nav-item ${currentView === 'leaderboard' ? 'active' : ''}`}
+            onClick={() => setCurrentView('leaderboard')}
+          >
+            <span className="bn-icon">🏆</span>
+            <span className="bn-label">Ranks</span>
+          </button>
+          <button
+            className={`bottom-nav-item ${currentView === 'players' ? 'active' : ''}`}
+            onClick={() => {
+              setCurrentView('players');
+              setShowPlayerManagement(true);
+            }}
+          >
+            <span className="bn-icon">👥</span>
+            <span className="bn-label">Players</span>
+          </button>
+          <button
+            className={`bottom-nav-item ${currentView === 'h2h' ? 'active' : ''}`}
+            onClick={() => {
+              setCurrentView('h2h');
+              setShowHeadToHead(true);
+            }}
+          >
+            <span className="bn-icon">⚔️</span>
+            <span className="bn-label">H2H</span>
+          </button>
+        </nav>
+      )}
 
       {/* Tier Change Notifications */}
       <TierChangeNotificationContainer
