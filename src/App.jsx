@@ -57,6 +57,9 @@ function App() {
   const [savedTournaments, setSavedTournaments] = useState([]);
   const [currentTournamentId, setCurrentTournamentId] = useState(null);
 
+  // STINKER (TESTING): id of the lowest-rated player in the active tournament
+  const [stinkerId, setStinkerId] = useState(null);
+
   // Player profile system states
   const [currentView, setCurrentView] = useState('tournament'); // 'tournament', 'players', 'h2h'
   const [showPlayerManagement, setShowPlayerManagement] = useState(false);
@@ -124,11 +127,12 @@ function App() {
         gameStarted,
         sessionEnded,
         currentTournamentId,
-        playersLastUpdated
+        playersLastUpdated,
+        stinkerId // STINKER (TESTING)
       };
       localStorage.setItem('activeTournamentState', JSON.stringify(state));
     }
-  }, [players, allRounds, currentRoundIndex, history, sitOuts, lastSitOutIds, sitOutPairHistory, playerSitOutCounts, gameStarted, sessionEnded, currentTournamentId, playersLastUpdated]);
+  }, [players, allRounds, currentRoundIndex, history, sitOuts, lastSitOutIds, sitOutPairHistory, playerSitOutCounts, gameStarted, sessionEnded, currentTournamentId, playersLastUpdated, stinkerId]);
 
   // Restore active tournament state on mount
   useEffect(() => {
@@ -149,6 +153,7 @@ function App() {
           setGameStarted(state.gameStarted);
           setSessionEnded(state.sessionEnded);
           setCurrentTournamentId(state.currentTournamentId);
+          setStinkerId(state.stinkerId || null); // STINKER (TESTING)
           if (state.playersLastUpdated) {
             setPlayersLastUpdated(state.playersLastUpdated);
           }
@@ -200,6 +205,13 @@ function App() {
     // Randomize player order for variety in match sequences
     const shuffledPlayers = shuffleArray(updatedPlayers);
 
+    // STINKER (TESTING): flag the lowest-rated player in this tournament
+    const stinker = shuffledPlayers.reduce(
+      (lowest, p) => ((p.startingElo ?? 1500) < (lowest.startingElo ?? 1500) ? p : lowest),
+      shuffledPlayers[0]
+    );
+    setStinkerId(stinker?.id || null);
+
     setPlayers(shuffledPlayers);
     setCurrentTournamentId(Date.now().toString());
     setRotationIndex(0);
@@ -230,7 +242,20 @@ function App() {
 
     // Calculate max courts
     const courts = Math.floor(currentPlayers.length / 4);
-    const { matches, sitOuts: sitting } = generateRound(currentPlayers, history, courts, currentRotationIndex, currentLastSitOutIds, currentSitOutPairHistory, currentPlayerSitOutCounts);
+
+    // STINKER (TESTING): find who partnered the stinker last round so we can avoid
+    // pairing them together two games in a row.
+    let lastStinkerPartnerId = null;
+    if (stinkerId && allRounds.length > 0) {
+      const prevRound = allRounds[allRounds.length - 1];
+      const prevStinkerMatch = prevRound.matches.find(m => m.players.includes(stinkerId));
+      if (prevStinkerMatch) {
+        const prevTeam = prevStinkerMatch.teams.find(t => t.includes(stinkerId));
+        lastStinkerPartnerId = prevTeam ? prevTeam.find(id => id !== stinkerId) : null;
+      }
+    }
+
+    const { matches, sitOuts: sitting } = generateRound(currentPlayers, history, courts, currentRotationIndex, currentLastSitOutIds, currentSitOutPairHistory, currentPlayerSitOutCounts, stinkerId, lastStinkerPartnerId);
 
     const newRound = {
       roundNumber: allRounds.length + 1,
@@ -465,6 +490,7 @@ function App() {
     setPlayerSitOutCounts({});
     setShowSummary(false);
     setCurrentTournamentId(null);
+    setStinkerId(null); // STINKER (TESTING)
     setPlayers([]);
   };
 
@@ -473,6 +499,12 @@ function App() {
     if (!tournament) return;
 
     setPlayers(tournament.players);
+    // STINKER (TESTING): re-derive the flagged player from stored starting ELOs
+    const loadedStinker = (tournament.players || []).reduce(
+      (lowest, p) => (lowest && (lowest.startingElo ?? 1500) <= (p.startingElo ?? 1500) ? lowest : p),
+      null
+    );
+    setStinkerId(loadedStinker?.id || null);
     setAllRounds(tournament.rounds);
     setHistory(tournament.history);
     setSitOuts(tournament.sitOuts || []);
@@ -634,6 +666,7 @@ function App() {
                   onUpdateScore={() => { }} // Read-only in review mode
                   onFinishMatch={() => { }} // Read-only in review mode
                   onPlayerClick={handleViewProfile}
+                  stinkerId={stinkerId} // STINKER (TESTING)
                 />
               ))}
             </div>
@@ -694,6 +727,7 @@ function App() {
                   onFinishMatch={finishMatch}
                   onSkipMatch={skipMatch}
                   onPlayerClick={handleViewProfile}
+                  stinkerId={stinkerId} // STINKER (TESTING)
                 />
               ))}
             </div>

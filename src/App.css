@@ -898,6 +898,9 @@ h2 {
 @keyframes ai-cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .ai-report-error { padding: 1rem 1.25rem; color: var(--danger); font-size: 0.875rem; border-top: 1px solid var(--border); }
 
+/* STINKER (TESTING): temporary flag badge — remove with the feature */
+.stinker-flag { display: inline-flex; align-items: center; gap: 0.2rem; margin-left: 0.4rem; padding: 0.1rem 0.45rem; background: rgba(255,176,32,0.16); border: 1px solid rgba(255,176,32,0.4); color: var(--amber); border-radius: var(--pill); font-family: var(--font-display); font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; vertical-align: middle; white-space: nowrap; }
+
 /* ── Staggered list entrances ───────────────────────────── */
 .matches-grid .match-card:nth-child(1), .leaderboard-cards .leaderboard-card:nth-child(1), .player-list .player-item:nth-child(1) { animation-delay: 0.02s; }
 .matches-grid .match-card:nth-child(2), .leaderboard-cards .leaderboard-card:nth-child(2), .player-list .player-item:nth-child(2) { animation-delay: 0.06s; }

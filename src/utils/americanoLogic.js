@@ -94,7 +94,7 @@ const selectPairing = (players, history) => {
 };
 
 
-export const generateRound = (players, history, numberOfCourts, rotationIndex = 0, lastSitOutIds = [], sitOutPairHistory = {}, playerSitOutCounts = {}) => {
+export const generateRound = (players, history, numberOfCourts, rotationIndex = 0, lastSitOutIds = [], sitOutPairHistory = {}, playerSitOutCounts = {}, stinkerId = null, lastStinkerPartnerId = null) => {
   // 1. Determine sitting players
   const playersNeeded = numberOfCourts * 4;
   const sitOutCount = players.length - playersNeeded;
@@ -251,6 +251,28 @@ export const generateRound = (players, history, numberOfCourts, rotationIndex = 
       }
     }
   }
+
+  // ── STINKER CONSTRAINT ──────────────────────────────────────────────
+  // The lowest-rated player ("stinker") must not be partnered with the same
+  // player two games in a row. Re-team the stinker's match so their partner
+  // differs from last round. (Temporary rule — see App.jsx STINKER markers.)
+  if (stinkerId && lastStinkerPartnerId) {
+    const stinkerMatch = matches.find(m => m.players.includes(stinkerId));
+    if (stinkerMatch) {
+      const stinkerTeamIdx = stinkerMatch.teams[0].includes(stinkerId) ? 0 : 1;
+      const otherTeamIdx = 1 - stinkerTeamIdx;
+      const currentPartnerId = stinkerMatch.teams[stinkerTeamIdx].find(id => id !== stinkerId);
+
+      if (currentPartnerId === lastStinkerPartnerId) {
+        // Swap the repeat partner with an opponent so the stinker gets someone new.
+        const newPartnerId = stinkerMatch.teams[otherTeamIdx][0];
+        const remainingOpponentId = stinkerMatch.teams[otherTeamIdx][1];
+        stinkerMatch.teams[stinkerTeamIdx] = [stinkerId, newPartnerId];
+        stinkerMatch.teams[otherTeamIdx] = [currentPartnerId, remainingOpponentId];
+      }
+    }
+  }
+  // ── END STINKER CONSTRAINT ──────────────────────────────────────────
 
   return { matches, sitOuts };
 };
