@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { getTierThresholds } from '../utils/eloService';
 
 const EloInfoModal = ({ onClose }) => {
     const tiers = getTierThresholds();
+
+    // Lock background scrolling while the modal is open
+    useEffect(() => {
+        const previous = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = previous; };
+    }, []);
 
     return (
         <div className="modal-overlay" onClick={onClose}>
