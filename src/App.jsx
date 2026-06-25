@@ -874,12 +874,6 @@ function App() {
               ))}
             </div>
 
-            <div className="custom-game-bar">
-              <button onClick={() => setShowCustomGame(true)} className="btn btn-secondary">
-                + Add Custom Game
-              </button>
-            </div>
-
             {roundComplete && (
               <div className="round-actions">
                 <button onClick={startNextRound} className="btn btn-success btn-lg">
@@ -894,6 +888,12 @@ function App() {
               allPlayers={getAllPlayers()}
               onPlayerClick={handleViewProfile}
             />
+
+            <div className="custom-game-bar">
+              <button onClick={() => setShowCustomGame(true)} className="btn btn-secondary">
+                + Add Custom Game
+              </button>
+            </div>
 
             <div className="controls">
               <button className="btn btn-primary" onClick={endSession}>End Session</button>
