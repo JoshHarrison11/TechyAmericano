@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PlayerSelector from './components/PlayerSelector';
 import MatchCard from './components/MatchCard';
 import Leaderboard from './components/Leaderboard';
@@ -26,7 +26,10 @@ import {
   saveTournamentsToStorage,
   deleteTournamentsFromSupabase,
   clearAllGroupDataFromSupabase,
-  resetGroupStats
+  resetGroupStats,
+  flushPendingSync,
+  getPendingSyncState,
+  clearPendingSync
 } from './utils/playerService';
 import { getEloTier } from './utils/eloService';
 import './App.css';
@@ -69,6 +72,22 @@ function App() {
 
   // League-wide stats reset (type-to-confirm)
   const [showResetStats, setShowResetStats] = useState(false);
+
+  // Cloud sync status indicator: 'saved' | 'syncing' | 'pending'
+  const [syncStatus, setSyncStatus] = useState('saved');
+
+  // Try to flush any unsynced data and reflect the result in the indicator.
+  const updateSyncStatus = useCallback(async (attempt = true) => {
+    const state = getPendingSyncState();
+    if (!state.pending) { setSyncStatus('saved'); return; }
+    if (attempt && navigator.onLine) {
+      setSyncStatus('syncing');
+      const after = await flushPendingSync();
+      setSyncStatus(after.pending ? 'pending' : 'saved');
+    } else {
+      setSyncStatus('pending');
+    }
+  }, []);
 
   // Player profile system states
   const [currentView, setCurrentView] = useState('tournament'); // 'tournament', 'players', 'h2h'
@@ -120,6 +139,37 @@ function App() {
       saveTournamentsToStorage(savedTournaments);
     }
   }, [savedTournaments]);
+
+  // Keep the cloud-sync indicator live and retry unsynced data
+  useEffect(() => {
+    if (!activeGroupId) return;
+
+    // Background pushes dispatch this when they finish
+    const onSyncEvent = (e) => {
+      const detail = e.detail || getPendingSyncState();
+      setSyncStatus(detail.pending ? 'pending' : 'saved');
+    };
+    const onOnline = () => updateSyncStatus(true);
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushPendingSync();
+      else updateSyncStatus(true);
+    };
+
+    window.addEventListener('padel-sync', onSyncEvent);
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // Periodic retry (catches offline→online and any dropped pushes)
+    const interval = setInterval(() => updateSyncStatus(true), 8000);
+    updateSyncStatus(false); // reflect current state immediately, no forced push
+
+    return () => {
+      window.removeEventListener('padel-sync', onSyncEvent);
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearInterval(interval);
+    };
+  }, [activeGroupId, updateSyncStatus]);
 
   // Auto-save active tournament state
   useEffect(() => {
@@ -618,19 +668,35 @@ function App() {
           <span className="dot" />
           League: <strong>{activeGroupId}</strong>
         </span>
-        <button
-            className="topbar-switch"
-            onClick={() => {
-                localStorage.removeItem('padelGroupId');
-                localStorage.removeItem('padelPlayers');
-                localStorage.removeItem('padelMatchHistory');
-                localStorage.removeItem('padelTournaments');
-                localStorage.removeItem('activeTournamentState');
-                setActiveGroupId(null);
-            }}
-        >
-            Switch League
-        </button>
+        <div className="topbar-right">
+          <button
+            className={`sync-chip ${syncStatus}`}
+            onClick={() => updateSyncStatus(true)}
+            title={
+              syncStatus === 'saved' ? 'All data synced to the cloud'
+                : syncStatus === 'syncing' ? 'Syncing to the cloud…'
+                : 'Unsynced changes — tap to retry'
+            }
+          >
+            {syncStatus === 'saved' && '✓ Synced'}
+            {syncStatus === 'syncing' && '⟳ Syncing…'}
+            {syncStatus === 'pending' && '⚠ Unsynced'}
+          </button>
+          <button
+              className="topbar-switch"
+              onClick={() => {
+                  localStorage.removeItem('padelGroupId');
+                  localStorage.removeItem('padelPlayers');
+                  localStorage.removeItem('padelMatchHistory');
+                  localStorage.removeItem('padelTournaments');
+                  localStorage.removeItem('activeTournamentState');
+                  clearPendingSync();
+                  setActiveGroupId(null);
+              }}
+          >
+              Switch League
+          </button>
+        </div>
       </div>
 
       <header>
@@ -722,7 +788,6 @@ function App() {
                   onUpdateScore={() => { }} // Read-only in review mode
                   onFinishMatch={() => { }} // Read-only in review mode
                   onPlayerClick={handleViewProfile}
-                  stinkerId={stinkerId} // STINKER (TESTING)
                 />
               ))}
             </div>
@@ -783,7 +848,6 @@ function App() {
                   onFinishMatch={finishMatch}
                   onSkipMatch={skipMatch}
                   onPlayerClick={handleViewProfile}
-                  stinkerId={stinkerId} // STINKER (TESTING)
                 />
               ))}
             </div>

@@ -127,6 +127,20 @@ main > * { width: 100%; max-width: 920px; }
 }
 .topbar-switch:hover { color: var(--primary-light); }
 
+.topbar-right { display: inline-flex; align-items: center; gap: 0.6rem; }
+.sync-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-family: var(--font-display); font-weight: 700; font-size: 0.68rem;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 0.28rem 0.6rem; border-radius: var(--pill);
+  border: 1px solid var(--border); background: var(--surface);
+  cursor: pointer; white-space: nowrap; transition: all 0.2s;
+}
+.sync-chip.saved { color: var(--text-muted); border-color: var(--border); }
+.sync-chip.syncing { color: var(--cyan); border-color: rgba(34,224,214,0.4); }
+.sync-chip.pending { color: var(--amber); border-color: rgba(255,176,32,0.45); background: rgba(255,176,32,0.08); animation: pulse 1.8s ease-in-out infinite; }
+.sync-chip.pending:hover { background: rgba(255,176,32,0.16); }
+
 /* ── Header / brand ─────────────────────────────────────── */
 header { text-align: center; margin-bottom: 1.75rem; padding: 1.25rem 0 0.5rem; }
 
@@ -1010,9 +1024,6 @@ h2 {
 .comp-elo-delta.positive { background: rgba(0,230,118,0.14); color: var(--primary); }
 .comp-elo-delta.negative { background: rgba(255,77,94,0.14); color: var(--danger); }
 .comp-result-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
-
-/* STINKER (TESTING): temporary flag badge — remove with the feature */
-.stinker-flag { display: inline-flex; align-items: center; gap: 0.2rem; margin-left: 0.4rem; padding: 0.1rem 0.45rem; background: rgba(255,176,32,0.16); border: 1px solid rgba(255,176,32,0.4); color: var(--amber); border-radius: var(--pill); font-family: var(--font-display); font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; vertical-align: middle; white-space: nowrap; }
 
 /* ── Staggered list entrances ───────────────────────────── */
 .matches-grid .match-card:nth-child(1), .leaderboard-cards .leaderboard-card:nth-child(1), .player-list .player-item:nth-child(1) { animation-delay: 0.02s; }

@@ -20,6 +20,53 @@ const STORAGE_KEYS = {
 };
 
 // ============================================================================
+// Pending-sync outbox — durable retry for flaky connections / fast tab closes
+// ============================================================================
+// Each write marks its table "dirty" in localStorage. A dirty flag survives a
+// tab close, so the data is re-pushed on the next load / when back online /
+// on a timer — and syncFromSupabase never overwrites a dirty table.
+const PENDING_KEY = 'padelPendingSync';
+
+const getPending = () => {
+    try { return JSON.parse(localStorage.getItem(PENDING_KEY)) || {}; }
+    catch { return {}; }
+};
+
+// Each table holds a monotonically increasing "dirty version". A push only
+// clears the flag if the version is unchanged since it started — so a write
+// that lands mid-push isn't accidentally marked as synced.
+const markDirty = (table) => {
+    const p = getPending();
+    p[table] = (p[table] || 0) + 1;
+    localStorage.setItem(PENDING_KEY, JSON.stringify(p));
+};
+
+const clearIfUnchanged = (table, version) => {
+    const p = getPending();
+    if (p[table] === version) {
+        delete p[table];
+        localStorage.setItem(PENDING_KEY, JSON.stringify(p));
+    }
+};
+
+export const getPendingSyncState = () => {
+    const p = getPending();
+    return {
+        players: !!p.players,
+        matches: !!p.matches,
+        tournaments: !!p.tournaments,
+        pending: !!(p.players || p.matches || p.tournaments)
+    };
+};
+
+export const clearPendingSync = () => localStorage.removeItem(PENDING_KEY);
+
+const getTournamentsLocal = () => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.TOURNAMENTS)) || []; }
+    catch { return []; }
+};
+
+// ============================================================================
 // Player CRUD Operations
 // ============================================================================
 
@@ -121,12 +168,13 @@ export const deletePlayer = (playerId) => {
     }
 };
 
-const pushPlayersToSupabase = async (players) => {
+// Pushes the CURRENT local players snapshot. Returns true on success so the
+// outbox can clear the dirty flag (and retry later on failure).
+const pushPlayersToSupabase = async () => {
+    const groupId = localStorage.getItem('padelGroupId');
+    if (!groupId) return false;
     try {
-        const groupId = localStorage.getItem('padelGroupId');
-        if (!groupId) return;
-
-        const payload = players.map(p => ({
+        const payload = getAllPlayers().map(p => ({
             id: p.id,
             group_id: groupId,
             name: p.name,
@@ -137,17 +185,19 @@ const pushPlayersToSupabase = async (players) => {
             badges: p.badges
         }));
         const { error } = await supabase.from('players').upsert(payload);
-        if (error) console.error('Supabase players sync error:', error);
+        if (error) { console.error('Supabase players sync error:', error); return false; }
+        return true;
     } catch (e) {
-        console.error('Supabase background sync catch:', e);
+        console.error('Supabase players sync catch:', e);
+        return false;
     }
 };
 
 const savePlayersToStorage = (players) => {
     try {
         localStorage.setItem(STORAGE_KEYS.PLAYERS, JSON.stringify(players));
-        // Optimistic background sync!
-        pushPlayersToSupabase(players);
+        markDirty('players');
+        flushPendingSync(); // optimistic; retried by the outbox if it fails
     } catch (error) {
         console.error('Error saving players:', error);
     }
@@ -172,12 +222,11 @@ export const getMatchesByPlayer = (playerId) => {
     return matches.filter(m => m.teams.flat().includes(playerId));
 };
 
-const pushMatchesToSupabase = async (matches) => {
+const pushMatchesToSupabase = async () => {
+    const groupId = localStorage.getItem('padelGroupId');
+    if (!groupId) return false;
     try {
-        const groupId = localStorage.getItem('padelGroupId');
-        if (!groupId) return;
-
-        const payload = matches.map(m => ({
+        const payload = getAllMatches().map(m => ({
             id: m.id.toString(), // Ensure string ID for database
             group_id: groupId,
             tournament_id: m.tournamentId?.toString() || null,
@@ -189,17 +238,19 @@ const pushMatchesToSupabase = async (matches) => {
             elo_data: m.eloData
         }));
         const { error } = await supabase.from('matches').upsert(payload);
-        if (error) console.error('Supabase matches sync error:', error);
+        if (error) { console.error('Supabase matches sync error:', error); return false; }
+        return true;
     } catch (e) {
-        console.error('Supabase background sync catch:', e);
+        console.error('Supabase matches sync catch:', e);
+        return false;
     }
 };
 
 export const saveMatchesToStorage = (matches) => {
     try {
         localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(matches));
-        // Optimistic background sync!
-        pushMatchesToSupabase(matches);
+        markDirty('matches');
+        flushPendingSync();
     } catch (error) {
         console.error('Error saving match history:', error);
     }
@@ -209,12 +260,11 @@ export const saveMatchesToStorage = (matches) => {
 // Tournament Operations
 // ============================================================================
 
-const pushTournamentsToSupabase = async (tournaments) => {
+const pushTournamentsToSupabase = async () => {
+    const groupId = localStorage.getItem('padelGroupId');
+    if (!groupId) return false;
     try {
-        const groupId = localStorage.getItem('padelGroupId');
-        if (!groupId) return;
-
-        const payload = tournaments.map(t => ({
+        const payload = getTournamentsLocal().map(t => ({
             id: t.id.toString(),
             group_id: groupId,
             date: t.date,
@@ -224,19 +274,47 @@ const pushTournamentsToSupabase = async (tournaments) => {
             sit_outs: t.sitOuts
         }));
         const { error } = await supabase.from('tournaments').upsert(payload);
-        if (error) console.error('Supabase tournaments sync error:', error);
+        if (error) { console.error('Supabase tournaments sync error:', error); return false; }
+        return true;
     } catch (e) {
         console.error('Supabase tournaments sync catch:', e);
+        return false;
     }
 };
 
 export const saveTournamentsToStorage = (tournaments) => {
     try {
         localStorage.setItem(STORAGE_KEYS.TOURNAMENTS, JSON.stringify(tournaments));
-        pushTournamentsToSupabase(tournaments);
+        markDirty('tournaments');
+        flushPendingSync();
     } catch (error) {
         console.error('Error saving tournaments:', error);
     }
+};
+
+// Push every table that still has unsynced local changes. Safe to call often:
+// no-ops if nothing is pending, there's no group, or a flush is already running.
+// Failed pushes leave the dirty flag set so they retry later.
+let flushInFlight = false;
+export const flushPendingSync = async () => {
+    const state = getPendingSyncState();
+    if (!state.pending) return state;
+    if (!localStorage.getItem('padelGroupId')) return state;
+    if (flushInFlight) return state;
+
+    flushInFlight = true;
+    try {
+        const versions = getPending(); // capture versions before pushing
+        if (state.players && await pushPlayersToSupabase()) clearIfUnchanged('players', versions.players);
+        if (state.matches && await pushMatchesToSupabase()) clearIfUnchanged('matches', versions.matches);
+        if (state.tournaments && await pushTournamentsToSupabase()) clearIfUnchanged('tournaments', versions.tournaments);
+    } finally {
+        flushInFlight = false;
+    }
+
+    const after = getPendingSyncState();
+    try { window.dispatchEvent(new CustomEvent('padel-sync', { detail: after })); } catch { /* non-browser */ }
+    return after;
 };
 
 // Delete specific tournaments and their matches from Supabase, and clean up localStorage matches
@@ -651,11 +729,16 @@ export const syncFromSupabase = async (groupId) => {
     try {
         console.log(`Syncing from Supabase for group ${groupId}...`);
 
-        // 1. Pull Players
+        // 0. Push any unsynced local changes FIRST so they can't be lost, then
+        //    skip pulling over any table that's still dirty (push failed/offline).
+        await flushPendingSync();
+        const pending = getPendingSyncState();
+
+        // 1. Pull Players (unless local players are still unsynced)
         const { data: remotePlayers, error: pError } = await supabase.from('players').select('*').eq('group_id', groupId);
         if (pError) throw pError;
 
-        if (remotePlayers && remotePlayers.length > 0) {
+        if (!pending.players && remotePlayers && remotePlayers.length > 0) {
             const mappedPlayers = remotePlayers.map(p => ({
                 id: p.id,
                 name: p.name,
@@ -668,11 +751,11 @@ export const syncFromSupabase = async (groupId) => {
             localStorage.setItem(STORAGE_KEYS.PLAYERS, JSON.stringify(mappedPlayers));
         }
 
-        // 2. Pull Matches
+        // 2. Pull Matches (unless local matches are still unsynced)
         const { data: remoteMatches, error: mError } = await supabase.from('matches').select('*').eq('group_id', groupId);
         if (mError) throw mError;
 
-        if (remoteMatches && remoteMatches.length > 0) {
+        if (!pending.matches && remoteMatches && remoteMatches.length > 0) {
             const mappedMatches = remoteMatches.map(m => ({
                 id: m.id.includes('_') ? m.id : parseInt(m.id, 10) || m.id, // Handle legacy numeric IDs
                 tournamentId: m.tournament_id,
@@ -686,11 +769,11 @@ export const syncFromSupabase = async (groupId) => {
             localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(mappedMatches));
         }
 
-        // 3. Pull Tournaments
+        // 3. Pull Tournaments (unless local tournaments are still unsynced)
         const { data: remoteTournaments, error: tError } = await supabase.from('tournaments').select('*').eq('group_id', groupId);
         if (tError) throw tError;
 
-        if (remoteTournaments && remoteTournaments.length > 0) {
+        if (!pending.tournaments && remoteTournaments && remoteTournaments.length > 0) {
             const mappedTournaments = remoteTournaments.map(t => ({
                 id: t.id,
                 date: t.date,

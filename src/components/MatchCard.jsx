@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { calculateMatchEloChanges } from '../utils/eloService';
 
-const MatchCard = ({ match, players, onUpdateScore, onFinishMatch, onSkipMatch, history, onPlayerClick, allPlayers, stinkerId }) => {
+const MatchCard = ({ match, players, onUpdateScore, onFinishMatch, onSkipMatch, history, onPlayerClick, allPlayers }) => {
     const getPlayerName = (id) => players.find(p => p.id === id)?.name || 'Unknown';
 
     // Get player ELO at match start
@@ -120,10 +120,6 @@ const MatchCard = ({ match, players, onUpdateScore, onFinishMatch, onSkipMatch, 
                     style={{ cursor: onPlayerClick ? 'pointer' : 'default' }}
                 >
                     {badges.prefix}{getPlayerName(playerId)}{badges.suffix}
-                    {/* STINKER (TESTING): temporary visual flag for lowest-rated player */}
-                    {stinkerId && playerId === stinkerId && (
-                        <span className="stinker-flag" title="Stinker (lowest rated)">💩 STINKER</span>
-                    )}
                 </span>
                 <div className="player-elo-info">
                     <span className="player-elo-badge">
