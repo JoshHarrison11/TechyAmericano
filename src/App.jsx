@@ -11,6 +11,7 @@ import DedicatedLeaderboard from './components/DedicatedLeaderboard';
 import TierChangeNotificationContainer from './components/TierChangeNotificationContainer';
 import GroupLogin from './components/GroupLogin';
 import AIMatchReport from './components/AIMatchReport';
+import CompetitiveMode from './components/CompetitiveMode';
 import { generateRound, clearPairingHistory } from './utils/americanoLogic';
 import {
   migrateExistingTournaments,
@@ -595,6 +596,8 @@ function App() {
           <>
             {currentView === 'leaderboard' ? (
               <DedicatedLeaderboard onPlayerClick={handleViewProfile} />
+            ) : currentView === 'competitive' ? (
+              <CompetitiveMode onMatchComplete={() => setPlayersLastUpdated(Date.now())} />
             ) : (
               <>
                 <PlayerSelector
@@ -822,6 +825,13 @@ function App() {
           >
             <span className="bn-icon">🏆</span>
             <span className="bn-label">Ranks</span>
+          </button>
+          <button
+            className={`bottom-nav-item ${currentView === 'competitive' ? 'active' : ''}`}
+            onClick={() => setCurrentView('competitive')}
+          >
+            <span className="bn-icon">🆚</span>
+            <span className="bn-label">Versus</span>
           </button>
           <button
             className={`bottom-nav-item ${currentView === 'players' ? 'active' : ''}`}
