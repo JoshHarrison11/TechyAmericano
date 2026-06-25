@@ -12,6 +12,7 @@ import TierChangeNotificationContainer from './components/TierChangeNotification
 import GroupLogin from './components/GroupLogin';
 import AIMatchReport from './components/AIMatchReport';
 import CompetitiveMode from './components/CompetitiveMode';
+import CustomGameModal from './components/CustomGameModal';
 import { generateRound, clearPairingHistory } from './utils/americanoLogic';
 import {
   migrateExistingTournaments,
@@ -60,6 +61,9 @@ function App() {
 
   // STINKER (TESTING): id of the lowest-rated player in the active tournament
   const [stinkerId, setStinkerId] = useState(null);
+
+  // Custom game picker (manual teams within a tournament round)
+  const [showCustomGame, setShowCustomGame] = useState(false);
 
   // Player profile system states
   const [currentView, setCurrentView] = useState('tournament'); // 'tournament', 'players', 'h2h'
@@ -413,6 +417,38 @@ function App() {
     }
   };
 
+  const addCustomGame = (teamAIds, teamBIds) => {
+    const updatedRounds = [...allRounds];
+    const round = updatedRounds[currentRoundIndex];
+    if (!round) return;
+
+    // Skip the round's existing (non-custom) matches the same way the Skip
+    // button does — reversible, and removed from standings while skipped.
+    const skippedIds = [];
+    round.matches = round.matches.map(m => {
+      if (m.isCustom || m.skipped) return m;
+      skippedIds.push(m.id);
+      return { ...m, skipped: true, completed: false };
+    });
+
+    // Add the user-defined 2v2 game; it scores/finishes/counts like any match.
+    const customMatch = {
+      id: Date.now(),
+      teams: [teamAIds, teamBIds],
+      players: [...teamAIds, ...teamBIds],
+      score: [0, 0],
+      completed: false,
+      isCustom: true
+    };
+    round.matches = [...round.matches, customMatch];
+
+    setAllRounds(updatedRounds);
+    if (skippedIds.length > 0) {
+      setHistory(history.filter(h => !skippedIds.includes(h.id)));
+    }
+    setShowCustomGame(false);
+  };
+
   const goToPreviousRound = () => {
     if (currentRoundIndex > 0) {
       setCurrentRoundIndex(currentRoundIndex - 1);
@@ -735,6 +771,12 @@ function App() {
               ))}
             </div>
 
+            <div className="custom-game-bar">
+              <button onClick={() => setShowCustomGame(true)} className="btn btn-secondary">
+                + Add Custom Game
+              </button>
+            </div>
+
             {roundComplete && (
               <div className="round-actions">
                 <button onClick={startNextRound} className="btn btn-success btn-lg">
@@ -755,6 +797,14 @@ function App() {
               <button className="btn btn-secondary" onClick={resetSession}>Reset Tournament</button>
             </div>
           </div>
+        )}
+
+        {showCustomGame && (
+          <CustomGameModal
+            players={players}
+            onConfirm={addCustomGame}
+            onClose={() => setShowCustomGame(false)}
+          />
         )}
 
         {showSummary && (

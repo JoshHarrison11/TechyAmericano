@@ -37,6 +37,12 @@ const PlayerSelector = ({ selectedPlayers, onPlayersChange, onStartTournament })
         p => !selectedPlayers.find(sp => sp.id === p.id)
     );
 
+    const handleAddAll = () => {
+        if (unselectedPlayers.length === 0) return;
+        onPlayersChange([...selectedPlayers, ...unselectedPlayers]);
+        setShowDropdown(false);
+    };
+
     return (
         <div className="card">
             <h2>Select Players</h2>
@@ -74,6 +80,14 @@ const PlayerSelector = ({ selectedPlayers, onPlayersChange, onStartTournament })
                     onClick={() => setShowQuickAdd(!showQuickAdd)}
                 >
                     + Quick Add Player
+                </button>
+
+                <button
+                    className="btn btn-secondary"
+                    onClick={handleAddAll}
+                    disabled={unselectedPlayers.length === 0}
+                >
+                    Add All ({unselectedPlayers.length})
                 </button>
             </div>
 

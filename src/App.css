@@ -898,6 +898,11 @@ h2 {
 @keyframes ai-cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .ai-report-error { padding: 1rem 1.25rem; color: var(--danger); font-size: 0.875rem; border-top: 1px solid var(--border); }
 
+/* Custom game button (tournament round) */
+.custom-game-bar { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+.custom-game-modal { max-width: 520px !important; max-height: 90vh; overflow-y: auto; }
+.custom-game-modal .comp-pool { margin-bottom: 1.25rem; }
+
 /* ── Competitive mode ───────────────────────────────────── */
 .competitive { width: 100%; display: flex; flex-direction: column; align-items: stretch; }
 .comp-intro { text-align: center; margin-bottom: 1rem; }
@@ -969,6 +974,16 @@ h2 {
 .comp-set-num { font-size: 0.6rem; color: var(--text-muted); letter-spacing: 0.06em; margin-right: 0.1rem; }
 .comp-set-sep { color: var(--text-muted); }
 .comp-set-win { color: var(--primary); }
+
+/* Manual end-of-set */
+.comp-endset-bar { display: flex; justify-content: center; margin-bottom: 1rem; }
+.comp-endset { width: 100%; max-width: 360px; }
+.comp-endset.ready { animation: endsetPulse 1.6s ease-in-out infinite; }
+@keyframes endsetPulse { 0%, 100% { box-shadow: 0 6px 18px rgba(0,230,118,0.28); } 50% { box-shadow: 0 6px 26px rgba(0,230,118,0.55), var(--glow); } }
+.comp-confirm { text-align: center; border-color: var(--border-bright); }
+.comp-confirm-text { font-size: 1rem; line-height: 1.5; color: var(--text-muted); margin-bottom: 1rem; }
+.comp-confirm-text strong { color: var(--text); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.comp-confirm-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 
 /* Result */
 .comp-result { text-align: center; }

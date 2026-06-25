@@ -10,9 +10,7 @@ const STORAGE_KEY = 'activeCompetitiveMatch';
 
 const DEFAULT_CONFIG = {
     setsToWin: 3,      // first to this many sets wins the match
-    gamesPerSet: 6,    // games needed to win a set
-    winByTwo: true,    // deuce + tie-break at gamesPerSet-all
-    tiebreakTo: 7      // tie-break is first to this, win by 2
+    gamesPerSet: 6     // target games per set (a guideline — set end is confirmed manually)
 };
 
 const CompetitiveMode = ({ onMatchComplete }) => {
@@ -25,7 +23,7 @@ const CompetitiveMode = ({ onMatchComplete }) => {
 
     const [sets, setSets] = useState([]);                // completed sets: [{ a, b }]
     const [games, setGames] = useState({ a: 0, b: 0 });  // current-set games
-    const [tb, setTb] = useState(null);                  // tie-break points { a, b } or null
+    const [pendingEnd, setPendingEnd] = useState(null);  // { team, a, b } awaiting confirmation
     const [result, setResult] = useState(null);
 
     const [showDropdown, setShowDropdown] = useState(false);
@@ -44,7 +42,6 @@ const CompetitiveMode = ({ onMatchComplete }) => {
                     setConfig(s.config || DEFAULT_CONFIG);
                     setSets(s.sets || []);
                     setGames(s.games || { a: 0, b: 0 });
-                    setTb(s.tb || null);
                 }
             } catch { /* ignore corrupt state */ }
         }
@@ -53,11 +50,11 @@ const CompetitiveMode = ({ onMatchComplete }) => {
     // ── Persist an in-progress match so a refresh doesn't lose it ───────
     useEffect(() => {
         if (phase === 'playing') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ phase, poolIds, assignment, config, sets, games, tb }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ phase, poolIds, assignment, config, sets, games }));
         } else if (phase === 'done') {
             localStorage.removeItem(STORAGE_KEY);
         }
-    }, [phase, poolIds, assignment, config, sets, games, tb]);
+    }, [phase, poolIds, assignment, config, sets, games]);
 
     const nameOf = (id) => allPlayers.find(p => p.id === id)?.name || 'Unknown';
     const eloOf = (id) => Math.round(allPlayers.find(p => p.id === id)?.elo?.current || 1500);
@@ -111,7 +108,7 @@ const CompetitiveMode = ({ onMatchComplete }) => {
         if (!canStart) return;
         setSets([]);
         setGames({ a: 0, b: 0 });
-        setTb(null);
+        setPendingEnd(null);
         setResult(null);
         setPhase('playing');
     };
@@ -149,70 +146,42 @@ const CompetitiveMode = ({ onMatchComplete }) => {
         const newSets = [...sets, newSet];
         setSets(newSets);
         setGames({ a: 0, b: 0 });
-        setTb(null);
 
         const won = setsWon(newSets);
         if (won.a >= config.setsToWin) finishMatch(newSets, 'A');
         else if (won.b >= config.setsToWin) finishMatch(newSets, 'B');
     };
 
-    const addPoint = (team) => {
-        const other = team === 'a' ? 'b' : 'a';
+    // Games just count up — the set never ends automatically.
+    const addPoint = (team) => setGames(prev => ({ ...prev, [team]: prev[team] + 1 }));
+    const removePoint = (team) => setGames(prev => ({ ...prev, [team]: Math.max(0, prev[team] - 1) }));
 
-        // Tie-break in progress
-        if (tb) {
-            const next = { ...tb, [team]: tb[team] + 1 };
-            if (next[team] >= config.tiebreakTo && next[team] - next[other] >= 2) {
-                // tie-break (and the set) won
-                completeSet(config.gamesPerSet + 1, config.gamesPerSet, team);
-            } else {
-                setTb(next);
-            }
-            return;
-        }
-
-        const next = { ...games, [team]: games[team] + 1 };
-
-        if (config.winByTwo) {
-            if (next.a === config.gamesPerSet && next.b === config.gamesPerSet) {
-                // deuce at gamesPerSet-all -> tie-break
-                setGames(next);
-                setTb({ a: 0, b: 0 });
-                return;
-            }
-            if (next[team] >= config.gamesPerSet && next[team] - next[other] >= 2) {
-                completeSet(next[team], next[other], team);
-                return;
-            }
-        } else if (next[team] >= config.gamesPerSet) {
-            completeSet(next[team], next[other], team);
-            return;
-        }
-
-        setGames(next);
+    // Manual set end, with confirmation.
+    const requestEndSet = () => {
+        if (games.a === games.b) return; // can't end a tied set
+        setPendingEnd({ team: games.a > games.b ? 'a' : 'b', a: games.a, b: games.b });
     };
-
-    const removePoint = (team) => {
-        if (tb) {
-            setTb({ ...tb, [team]: Math.max(0, tb[team] - 1) });
-        } else {
-            setGames({ ...games, [team]: Math.max(0, games[team] - 1) });
-        }
+    const confirmEndSet = () => {
+        if (!pendingEnd) return;
+        const { team, a, b } = pendingEnd;
+        setPendingEnd(null);
+        completeSet(team === 'a' ? a : b, team === 'a' ? b : a, team);
     };
+    const cancelEndSet = () => setPendingEnd(null);
 
     const resetToSetup = () => {
         localStorage.removeItem(STORAGE_KEY);
         setPhase('setup');
         setSets([]);
         setGames({ a: 0, b: 0 });
-        setTb(null);
+        setPendingEnd(null);
         setResult(null);
     };
 
     const rematch = () => {
         setSets([]);
         setGames({ a: 0, b: 0 });
-        setTb(null);
+        setPendingEnd(null);
         setResult(null);
         setPhase('playing');
     };
@@ -242,7 +211,7 @@ const CompetitiveMode = ({ onMatchComplete }) => {
                             </div>
                         </div>
                         <div className="comp-stepper">
-                            <span className="comp-stepper-label">Games / set</span>
+                            <span className="comp-stepper-label">Target games / set</span>
                             <div className="comp-stepper-controls">
                                 <button className="score-btn" onClick={() => adjustConfig('gamesPerSet', -1, 1, 12)} disabled={config.gamesPerSet <= 1}>−</button>
                                 <span className="comp-stepper-value">{config.gamesPerSet}</span>
@@ -250,16 +219,8 @@ const CompetitiveMode = ({ onMatchComplete }) => {
                             </div>
                         </div>
                     </div>
-                    <label className="comp-toggle">
-                        <input
-                            type="checkbox"
-                            checked={config.winByTwo}
-                            onChange={(e) => setConfig({ ...config, winByTwo: e.target.checked })}
-                        />
-                        <span>Win by 2 — tie-break at {config.gamesPerSet}–{config.gamesPerSet}</span>
-                    </label>
                     <p className="comp-format-summary">
-                        First to <strong>{config.setsToWin}</strong> {config.setsToWin === 1 ? 'set' : 'sets'} · first to <strong>{config.gamesPerSet}</strong> games per set{config.winByTwo ? ' (win by 2)' : ''}
+                        First to <strong>{config.setsToWin}</strong> {config.setsToWin === 1 ? 'set' : 'sets'} · target <strong>{config.gamesPerSet}</strong> games per set. You confirm when each set ends.
                     </p>
                 </div>
 
@@ -348,6 +309,7 @@ const CompetitiveMode = ({ onMatchComplete }) => {
     // PLAYING & DONE — shared scoreboard
     // ════════════════════════════════════════════════════════════════════
     const live = setsWon(sets);
+    const targetMet = Math.max(games.a, games.b) >= config.gamesPerSet;
     const renderTeam = (team, ids) => {
         const isWinner = result && result.winner === team.toUpperCase();
         return (
@@ -357,10 +319,10 @@ const CompetitiveMode = ({ onMatchComplete }) => {
                 </div>
                 <div className="comp-sets-won">{team === 'a' ? live.a : live.b} <span>sets</span></div>
                 <div className="comp-current">
-                    <div className="comp-current-value">{tb ? tb[team] : games[team]}</div>
-                    {phase === 'playing' && (
+                    <div className="comp-current-value">{games[team]}</div>
+                    {phase === 'playing' && !pendingEnd && (
                         <div className="comp-score-controls">
-                            <button className="score-btn" onClick={() => removePoint(team)} disabled={(tb ? tb[team] : games[team]) === 0}>−</button>
+                            <button className="score-btn" onClick={() => removePoint(team)} disabled={games[team] === 0}>−</button>
                             <button className="score-btn comp-add" onClick={() => addPoint(team)}>+</button>
                         </div>
                     )}
@@ -373,11 +335,7 @@ const CompetitiveMode = ({ onMatchComplete }) => {
         <div className="competitive">
             <div className="comp-scoreboard-head">
                 <span className="comp-tag">🆚 Competitive</span>
-                {phase === 'playing' && (
-                    <span className="comp-status">
-                        {tb ? '🎾 TIE-BREAK' : `Set ${sets.length + 1}`}
-                    </span>
-                )}
+                {phase === 'playing' && <span className="comp-status">Set {sets.length + 1}</span>}
             </div>
 
             <div className="comp-scoreboard">
@@ -401,6 +359,31 @@ const CompetitiveMode = ({ onMatchComplete }) => {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {/* Manual end-of-set, with confirmation */}
+            {phase === 'playing' && (
+                pendingEnd ? (
+                    <div className="card comp-confirm">
+                        <div className="comp-confirm-text">
+                            End set {sets.length + 1}? <strong>{(pendingEnd.team === 'a' ? teamA : teamB).map(nameOf).join(' & ')}</strong> win this set <strong>{Math.max(pendingEnd.a, pendingEnd.b)}–{Math.min(pendingEnd.a, pendingEnd.b)}</strong>.
+                        </div>
+                        <div className="comp-confirm-actions">
+                            <button className="btn btn-success" onClick={confirmEndSet}>Confirm</button>
+                            <button className="btn btn-secondary" onClick={cancelEndSet}>Keep playing</button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="comp-endset-bar">
+                        <button
+                            className={`btn btn-primary btn-lg comp-endset ${targetMet ? 'ready' : ''}`}
+                            onClick={requestEndSet}
+                            disabled={games.a === games.b}
+                        >
+                            {games.a === games.b ? 'Set tied — play on' : 'End Set'}
+                        </button>
+                    </div>
+                )
             )}
 
             {/* Result */}
@@ -432,7 +415,7 @@ const CompetitiveMode = ({ onMatchComplete }) => {
                 </div>
             )}
 
-            {phase === 'playing' && (
+            {phase === 'playing' && !pendingEnd && (
                 <div className="controls">
                     <button className="btn btn-secondary" onClick={resetToSetup}>Abandon Match</button>
                 </div>
