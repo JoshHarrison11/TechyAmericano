@@ -24,8 +24,8 @@ import {
   migrateEloData,
   syncFromSupabase,
   saveTournamentsToStorage,
-  deleteTournamentsFromSupabase,
-  clearAllGroupDataFromSupabase,
+  deleteTournaments,
+  wipeAllGroupData,
   resetGroupStats,
   flushPendingSync,
   getPendingSyncState,
@@ -103,6 +103,28 @@ function App() {
   // Tier change notifications
   const [tierChangeNotifications, setTierChangeNotifications] = useState([]);
 
+  // Re-read the tournament list from localStorage (e.g. after a cloud pull).
+  // Returns the previous state unchanged when nothing differs, so it doesn't
+  // needlessly re-trigger the save effect.
+  const reloadTournamentsFromStorage = useCallback(() => {
+    try {
+      const saved = localStorage.getItem('padelTournaments');
+      const list = saved ? JSON.parse(saved) : [];
+      setSavedTournaments(prev => {
+        if (prev.length === list.length && prev.every((t, i) => t.id === list[i]?.id)) return prev;
+        return list;
+      });
+    } catch { /* ignore corrupt storage */ }
+  }, []);
+
+  // Pull from the cloud and refresh local-derived UI (players + tournaments).
+  const doCloudSync = useCallback(async () => {
+    if (!activeGroupId) return;
+    await syncFromSupabase(activeGroupId);
+    reloadTournamentsFromStorage();
+    setPlayersLastUpdated(Date.now());
+  }, [activeGroupId, reloadTournamentsFromStorage]);
+
   // Load saved tournaments on mount
   useEffect(() => {
     const saved = localStorage.getItem('padelTournaments');
@@ -127,11 +149,9 @@ function App() {
 
     // Sync cloud database if group exists
     if (activeGroupId) {
-      syncFromSupabase(activeGroupId).then(() => {
-        setPlayersLastUpdated(Date.now());
-      });
+      doCloudSync();
     }
-  }, [activeGroupId]);
+  }, [activeGroupId, doCloudSync]);
 
   // Save tournaments to localStorage + Supabase whenever they change
   useEffect(() => {
@@ -149,17 +169,19 @@ function App() {
       const detail = e.detail || getPendingSyncState();
       setSyncStatus(detail.pending ? 'pending' : 'saved');
     };
-    const onOnline = () => updateSyncStatus(true);
+    // On reconnect / returning to the app, pull fresh data (this also flushes
+    // pending writes, since syncFromSupabase flushes first).
+    const onOnline = () => doCloudSync();
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flushPendingSync();
-      else updateSyncStatus(true);
+      else doCloudSync();
     };
 
     window.addEventListener('padel-sync', onSyncEvent);
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisibility);
 
-    // Periodic retry (catches offline→online and any dropped pushes)
+    // Periodic write-retry only (no full pull every tick)
     const interval = setInterval(() => updateSyncStatus(true), 8000);
     updateSyncStatus(false); // reflect current state immediately, no forced push
 
@@ -169,7 +191,7 @@ function App() {
       document.removeEventListener('visibilitychange', onVisibility);
       clearInterval(interval);
     };
-  }, [activeGroupId, updateSyncStatus]);
+  }, [activeGroupId, updateSyncStatus, doCloudSync]);
 
   // Auto-save active tournament state
   useEffect(() => {
@@ -609,7 +631,7 @@ function App() {
 
   const deleteTournament = (tournamentId) => {
     setSavedTournaments(prev => prev.filter(t => t.id !== tournamentId));
-    deleteTournamentsFromSupabase([tournamentId]);
+    deleteTournaments([tournamentId]); // durable: local + queued remote delete
     if (currentTournamentId === tournamentId) {
       resetSession();
     }
@@ -905,7 +927,7 @@ function App() {
             onClearAll={() => {
               if (window.confirm('Are you sure you want to clear all tournament history?')) {
                 setSavedTournaments([]);
-                clearAllGroupDataFromSupabase(activeGroupId);
+                wipeAllGroupData(); // durable: local + queued remote wipe
               }
             }}
           />

@@ -49,17 +49,54 @@ const clearIfUnchanged = (table, version) => {
     }
 };
 
+// ── Pending DELETES outbox ──────────────────────────────────────────────
+// Deletions are durable too: a delete applies to localStorage immediately and
+// is queued so the Supabase delete is retried until it lands. Until then,
+// syncFromSupabase filters these ids out of pulled data so they can't reappear.
+const PENDING_DELETES_KEY = 'padelPendingDeletes';
+
+const getPendingDeletes = () => {
+    try { return JSON.parse(localStorage.getItem(PENDING_DELETES_KEY)) || {}; }
+    catch { return {}; }
+};
+
+const savePendingDeletes = (d) => localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(d));
+
+const queueDeleteIds = (table, ids) => {
+    const d = getPendingDeletes();
+    d[table] = [...new Set([...(d[table] || []), ...ids.map(String)])];
+    savePendingDeletes(d);
+};
+
+const queueWipeAll = () => {
+    const d = getPendingDeletes();
+    d.wipeAll = true;
+    savePendingDeletes(d);
+};
+
+export const hasPendingDeletes = () => {
+    const d = getPendingDeletes();
+    return !!(d.wipeAll || (d.tournaments && d.tournaments.length) || (d.players && d.players.length));
+};
+
+export const clearPendingDeletes = () => localStorage.removeItem(PENDING_DELETES_KEY);
+
 export const getPendingSyncState = () => {
     const p = getPending();
+    const deletes = hasPendingDeletes();
     return {
         players: !!p.players,
         matches: !!p.matches,
         tournaments: !!p.tournaments,
-        pending: !!(p.players || p.matches || p.tournaments)
+        deletes,
+        pending: !!(p.players || p.matches || p.tournaments) || deletes
     };
 };
 
-export const clearPendingSync = () => localStorage.removeItem(PENDING_KEY);
+export const clearPendingSync = () => {
+    localStorage.removeItem(PENDING_KEY);
+    localStorage.removeItem(PENDING_DELETES_KEY);
+};
 
 const getTournamentsLocal = () => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.TOURNAMENTS)) || []; }
@@ -131,41 +168,44 @@ export const updatePlayer = (playerId, updates) => {
     return players[index];
 };
 
-const deletePlayerFromSupabase = async (playerId) => {
-    try {
-        const { error } = await supabase.from('players').delete().eq('id', playerId);
-        if (error) console.error('Supabase player delete error:', error);
-    } catch (e) {
-        console.error('Supabase delete catch:', e);
-    }
+// Prune helpers — write localStorage immediately so local is authoritative.
+const removeTournamentsLocal = (ids) => {
+    const idset = new Set(ids.map(String));
+    const tournaments = getTournamentsLocal().filter(t => !idset.has(String(t.id)));
+    localStorage.setItem(STORAGE_KEYS.TOURNAMENTS, JSON.stringify(tournaments));
+    const matches = getAllMatches().filter(m => !idset.has(String(m.tournamentId)));
+    localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(matches));
 };
 
-const deleteMatchesFromSupabase = async (matchIds) => {
-    if (!matchIds || matchIds.length === 0) return;
-    try {
-        const { error } = await supabase.from('matches').delete().in('id', matchIds);
-        if (error) console.error('Supabase matches delete error:', error);
-    } catch (e) {
-        console.error('Supabase match delete catch:', e);
-    }
+const removePlayerLocal = (playerId) => {
+    const players = getAllPlayers().filter(p => p.id !== playerId);
+    localStorage.setItem(STORAGE_KEYS.PLAYERS, JSON.stringify(players));
+    const matches = getAllMatches().filter(m => !m.teams.flat().includes(playerId));
+    localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(matches));
 };
 
-
+// Delete a player (and their matches). Durable: applied locally now, the
+// Supabase delete is retried by the outbox and filtered out of pulls until done.
 export const deletePlayer = (playerId) => {
-    const players = getAllPlayers();
-    const filtered = players.filter(p => p.id !== playerId);
-    savePlayersToStorage(filtered);
-    deletePlayerFromSupabase(playerId);
+    removePlayerLocal(playerId);
+    queueDeleteIds('players', [playerId]);
+    flushPendingSync();
+};
 
-    const matches = getAllMatches();
-    const filteredMatches = matches.filter(m =>
-        !m.teams.flat().includes(playerId)
-    );
-    saveMatchesToStorage(filteredMatches);
-    const matchesToDelete = matches.filter(m => m.teams.flat().includes(playerId));
-    if (matchesToDelete.length > 0) {
-        deleteMatchesFromSupabase(matchesToDelete.map(m => m.id.toString()));
-    }
+// Delete one or more tournaments (and their matches). Same durability.
+export const deleteTournaments = (tournamentIds) => {
+    if (!tournamentIds || tournamentIds.length === 0) return;
+    removeTournamentsLocal(tournamentIds);
+    queueDeleteIds('tournaments', tournamentIds);
+    flushPendingSync();
+};
+
+// Wipe ALL tournaments + matches for the group (clear-all). Durable.
+export const wipeAllGroupData = () => {
+    localStorage.removeItem(STORAGE_KEYS.MATCH_HISTORY);
+    localStorage.removeItem(STORAGE_KEYS.TOURNAMENTS);
+    queueWipeAll();
+    flushPendingSync();
 };
 
 // Pushes the CURRENT local players snapshot. Returns true on success so the
@@ -292,14 +332,81 @@ export const saveTournamentsToStorage = (tournaments) => {
     }
 };
 
-// Push every table that still has unsynced local changes. Safe to call often:
-// no-ops if nothing is pending, there's no group, or a flush is already running.
-// Failed pushes leave the dirty flag set so they retry later.
+// ── Remote delete helpers (return true on success so the queue can clear) ───
+const deleteRemoteByGroup = async (table, groupId) => {
+    try {
+        const { error } = await supabase.from(table).delete().eq('group_id', groupId);
+        if (error) { console.error(`Supabase wipe ${table} error:`, error); return false; }
+        return true;
+    } catch (e) { console.error(`Supabase wipe ${table} catch:`, e); return false; }
+};
+
+const deleteRemoteTournaments = async (ids) => {
+    const strIds = ids.map(String);
+    try {
+        const { error: mError } = await supabase.from('matches').delete().in('tournament_id', strIds);
+        if (mError) { console.error('Supabase tournament-matches delete error:', mError); return false; }
+        const { error: tError } = await supabase.from('tournaments').delete().in('id', strIds);
+        if (tError) { console.error('Supabase tournament delete error:', tError); return false; }
+        return true;
+    } catch (e) { console.error('Supabase tournament delete catch:', e); return false; }
+};
+
+const deleteRemotePlayers = async (ids) => {
+    try {
+        for (const id of ids) {
+            const { error: mError } = await supabase.from('matches').delete().contains('players', [id]);
+            if (mError) { console.error('Supabase player-matches delete error:', mError); return false; }
+        }
+        const { error: pError } = await supabase.from('players').delete().in('id', ids.map(String));
+        if (pError) { console.error('Supabase player delete error:', pError); return false; }
+        return true;
+    } catch (e) { console.error('Supabase player delete catch:', e); return false; }
+};
+
+// Process queued deletes; clear each from the queue only once it lands remotely.
+const flushDeletes = async (groupId) => {
+    let d = getPendingDeletes();
+    if (d.wipeAll) {
+        const okM = await deleteRemoteByGroup('matches', groupId);
+        const okT = await deleteRemoteByGroup('tournaments', groupId);
+        if (okM && okT) {
+            d = getPendingDeletes();
+            delete d.wipeAll;
+            delete d.tournaments; // superseded by the wipe
+            savePendingDeletes(d);
+        }
+    }
+    d = getPendingDeletes();
+    if (d.tournaments && d.tournaments.length) {
+        const ids = d.tournaments;
+        if (await deleteRemoteTournaments(ids)) {
+            const cur = getPendingDeletes();
+            cur.tournaments = (cur.tournaments || []).filter(id => !ids.includes(id));
+            if (!cur.tournaments.length) delete cur.tournaments;
+            savePendingDeletes(cur);
+        }
+    }
+    d = getPendingDeletes();
+    if (d.players && d.players.length) {
+        const ids = d.players;
+        if (await deleteRemotePlayers(ids)) {
+            const cur = getPendingDeletes();
+            cur.players = (cur.players || []).filter(id => !ids.includes(id));
+            if (!cur.players.length) delete cur.players;
+            savePendingDeletes(cur);
+        }
+    }
+};
+
+// Push/delete everything that's still unsynced. Safe to call often: no-ops if
+// nothing is pending, there's no group, or a flush is already running.
 let flushInFlight = false;
 export const flushPendingSync = async () => {
     const state = getPendingSyncState();
     if (!state.pending) return state;
-    if (!localStorage.getItem('padelGroupId')) return state;
+    const groupId = localStorage.getItem('padelGroupId');
+    if (!groupId) return state;
     if (flushInFlight) return state;
 
     flushInFlight = true;
@@ -308,6 +415,7 @@ export const flushPendingSync = async () => {
         if (state.players && await pushPlayersToSupabase()) clearIfUnchanged('players', versions.players);
         if (state.matches && await pushMatchesToSupabase()) clearIfUnchanged('matches', versions.matches);
         if (state.tournaments && await pushTournamentsToSupabase()) clearIfUnchanged('tournaments', versions.tournaments);
+        if (state.deletes) await flushDeletes(groupId);
     } finally {
         flushInFlight = false;
     }
@@ -317,48 +425,14 @@ export const flushPendingSync = async () => {
     return after;
 };
 
-// Delete specific tournaments and their matches from Supabase, and clean up localStorage matches
-export const deleteTournamentsFromSupabase = async (tournamentIds) => {
-    if (!tournamentIds || tournamentIds.length === 0) return;
-    const ids = tournamentIds.map(String);
-    try {
-        const { error: tError } = await supabase.from('tournaments').delete().in('id', ids);
-        if (tError) console.error('Supabase tournament delete error:', tError);
-        const { error: mError } = await supabase.from('matches').delete().in('tournament_id', ids);
-        if (mError) console.error('Supabase tournament matches delete error:', mError);
-    } catch (e) {
-        console.error('Supabase tournament delete catch:', e);
-    }
-    // Prune orphaned matches from localStorage
-    const matches = getAllMatches();
-    const filtered = matches.filter(m => !ids.includes(String(m.tournamentId)));
-    localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(filtered));
-};
-
-// Delete all tournaments and matches for a group from Supabase + localStorage
-export const clearAllGroupDataFromSupabase = async (groupId) => {
-    if (!groupId) return;
-    try {
-        const { error: tError } = await supabase.from('tournaments').delete().eq('group_id', groupId);
-        if (tError) console.error('Supabase clear tournaments error:', tError);
-        const { error: mError } = await supabase.from('matches').delete().eq('group_id', groupId);
-        if (mError) console.error('Supabase clear matches error:', mError);
-    } catch (e) {
-        console.error('Supabase clear all catch:', e);
-    }
-    localStorage.removeItem(STORAGE_KEYS.TOURNAMENTS);
-    localStorage.removeItem(STORAGE_KEYS.MATCH_HISTORY);
-};
-
 // Reset a league's stats WITHOUT deleting the league or its players.
 // Players keep their name/avatar but have stats + ELO + badges wiped, and all
-// tournaments and matches for the group are removed (localStorage + Supabase).
+// tournaments and matches for the group are removed (durable, retried).
 export const resetGroupStats = async (groupId) => {
     if (!groupId) return false;
 
-    // 1. Reset every player's stats / ELO / badges (keep identity)
-    const players = getAllPlayers();
-    const resetPlayers = players.map(p => ({
+    // 1. Reset every player's stats / ELO / badges (keep identity) — durable upsert
+    const resetPlayers = getAllPlayers().map(p => ({
         ...p,
         stats: {
             tournamentsPlayed: 0,
@@ -377,24 +451,15 @@ export const resetGroupStats = async (groupId) => {
         elo: initializePlayerElo(),
         badges: []
     }));
-    // Saves locally AND upserts the reset players to Supabase
     savePlayersToStorage(resetPlayers);
 
-    // 2. Wipe matches + tournaments locally
+    // 2. Wipe matches + tournaments locally + queue a durable remote wipe
     localStorage.removeItem(STORAGE_KEYS.MATCH_HISTORY);
     localStorage.removeItem(STORAGE_KEYS.TOURNAMENTS);
     localStorage.removeItem('activeTournamentState');
+    queueWipeAll();
 
-    // 3. Delete matches + tournaments for this group from Supabase
-    try {
-        const { error: mError } = await supabase.from('matches').delete().eq('group_id', groupId);
-        if (mError) console.error('Supabase reset matches error:', mError);
-        const { error: tError } = await supabase.from('tournaments').delete().eq('group_id', groupId);
-        if (tError) console.error('Supabase reset tournaments error:', tError);
-    } catch (e) {
-        console.error('Supabase reset catch:', e);
-    }
-
+    await flushPendingSync();
     return true;
 };
 
@@ -734,54 +799,67 @@ export const syncFromSupabase = async (groupId) => {
         await flushPendingSync();
         const pending = getPendingSyncState();
 
+        // Deletes that haven't landed remotely yet — filter them out of pulls so
+        // a deleted item can never be resurrected from stale cloud data.
+        const del = getPendingDeletes();
+        const delT = new Set((del.tournaments || []).map(String));
+        const delP = new Set((del.players || []).map(String));
+        const wipeAll = !!del.wipeAll;
+
         // 1. Pull Players (unless local players are still unsynced)
         const { data: remotePlayers, error: pError } = await supabase.from('players').select('*').eq('group_id', groupId);
         if (pError) throw pError;
 
         if (!pending.players && remotePlayers && remotePlayers.length > 0) {
-            const mappedPlayers = remotePlayers.map(p => ({
-                id: p.id,
-                name: p.name,
-                avatar: p.avatar,
-                createdAt: p.created_at,
-                stats: p.stats,
-                elo: p.elo,
-                badges: p.badges
-            }));
+            const mappedPlayers = remotePlayers
+                .filter(p => !delP.has(String(p.id)))
+                .map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    avatar: p.avatar,
+                    createdAt: p.created_at,
+                    stats: p.stats,
+                    elo: p.elo,
+                    badges: p.badges
+                }));
             localStorage.setItem(STORAGE_KEYS.PLAYERS, JSON.stringify(mappedPlayers));
         }
 
-        // 2. Pull Matches (unless local matches are still unsynced)
+        // 2. Pull Matches (skip if a wipe is pending or matches are still unsynced)
         const { data: remoteMatches, error: mError } = await supabase.from('matches').select('*').eq('group_id', groupId);
         if (mError) throw mError;
 
-        if (!pending.matches && remoteMatches && remoteMatches.length > 0) {
-            const mappedMatches = remoteMatches.map(m => ({
-                id: m.id.includes('_') ? m.id : parseInt(m.id, 10) || m.id, // Handle legacy numeric IDs
-                tournamentId: m.tournament_id,
-                date: m.date,
-                teams: m.teams,
-                score: m.score,
-                completed: m.completed,
-                players: m.players,
-                eloData: m.elo_data
-            }));
+        if (!wipeAll && !pending.matches && remoteMatches && remoteMatches.length > 0) {
+            const mappedMatches = remoteMatches
+                .filter(m => !delT.has(String(m.tournament_id)) && !(m.players || []).some(id => delP.has(String(id))))
+                .map(m => ({
+                    id: m.id.includes('_') ? m.id : parseInt(m.id, 10) || m.id, // Handle legacy numeric IDs
+                    tournamentId: m.tournament_id,
+                    date: m.date,
+                    teams: m.teams,
+                    score: m.score,
+                    completed: m.completed,
+                    players: m.players,
+                    eloData: m.elo_data
+                }));
             localStorage.setItem(STORAGE_KEYS.MATCH_HISTORY, JSON.stringify(mappedMatches));
         }
 
-        // 3. Pull Tournaments (unless local tournaments are still unsynced)
+        // 3. Pull Tournaments (skip if a wipe is pending or tournaments are still unsynced)
         const { data: remoteTournaments, error: tError } = await supabase.from('tournaments').select('*').eq('group_id', groupId);
         if (tError) throw tError;
 
-        if (!pending.tournaments && remoteTournaments && remoteTournaments.length > 0) {
-            const mappedTournaments = remoteTournaments.map(t => ({
-                id: t.id,
-                date: t.date,
-                players: t.players,
-                rounds: t.rounds,
-                history: t.history,
-                sitOuts: t.sit_outs
-            }));
+        if (!wipeAll && !pending.tournaments && remoteTournaments && remoteTournaments.length > 0) {
+            const mappedTournaments = remoteTournaments
+                .filter(t => !delT.has(String(t.id)))
+                .map(t => ({
+                    id: t.id,
+                    date: t.date,
+                    players: t.players,
+                    rounds: t.rounds,
+                    history: t.history,
+                    sitOuts: t.sit_outs
+                }));
             localStorage.setItem(STORAGE_KEYS.TOURNAMENTS, JSON.stringify(mappedTournaments));
         }
 
