@@ -1,4 +1,5 @@
 import React from 'react';
+import TierBadge from './TierBadge';
 
 const Leaderboard = ({ players, history, onPlayerClick, allPlayers }) => {
   // Calculate stats
@@ -50,8 +51,12 @@ const Leaderboard = ({ players, history, onPlayerClick, allPlayers }) => {
       }
     }
 
+    const tierRec = allPlayers?.find(p => p.id === player.id);
+    const elo = player.finalElo || tierRec?.elo?.current || player.startingElo || 1500;
+
     return {
       ...player,
+      elo,
       matchesPlayed,
       matchesWon,
       matchesLost,
@@ -91,6 +96,7 @@ const Leaderboard = ({ players, history, onPlayerClick, allPlayers }) => {
             <tr key={player.id}>
               <td className="rank-cell">{index + 1}</td>
               <td className="player-name">
+                <TierBadge rating={player.elo} />
                 <span
                   onClick={() => onPlayerClick && onPlayerClick(player.id)}
                   style={{ cursor: onPlayerClick ? 'pointer' : 'default' }}

@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { calculateMatchEloChanges } from '../utils/eloService';
+import TierBadge from './TierBadge';
 
-const MatchCard = ({ match, players, onUpdateScore, onFinishMatch, onSkipMatch, history, onPlayerClick, allPlayers }) => {
+const MatchCard = ({ match, players, onUpdateScore, onFinishMatch, onSkipMatch, onPlayerClick, allPlayers }) => {
     const getPlayerName = (id) => players.find(p => p.id === id)?.name || 'Unknown';
 
     // Get player ELO at match start
@@ -55,18 +56,21 @@ const MatchCard = ({ match, players, onUpdateScore, onFinishMatch, onSkipMatch, 
 
         return (
             <div key={playerId} className="player-with-elo">
-                <span
-                    className="player-name"
-                    onClick={(e) => {
-                        if (onPlayerClick) {
-                            e.stopPropagation();
-                            onPlayerClick(playerId);
-                        }
-                    }}
-                    style={{ cursor: onPlayerClick ? 'pointer' : 'default' }}
-                >
-                    {getPlayerName(playerId)}
-                </span>
+                <div className="player-name-row">
+                    <TierBadge rating={playerElo} />
+                    <span
+                        className="player-name"
+                        onClick={(e) => {
+                            if (onPlayerClick) {
+                                e.stopPropagation();
+                                onPlayerClick(playerId);
+                            }
+                        }}
+                        style={{ cursor: onPlayerClick ? 'pointer' : 'default' }}
+                    >
+                        {getPlayerName(playerId)}
+                    </span>
+                </div>
                 <div className="player-elo-info">
                     <span className="player-elo-badge">
                         {Math.round(playerElo)}
