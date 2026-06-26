@@ -16,8 +16,8 @@ html, body { margin: 0; padding: 0; }
 body {
   min-width: 320px;
   min-height: 100vh;
-  background-color: #0c2e3a;
-  color: #eaf3ef;
+  background-color: #0c0f14;
+  color: #f4f7fa;
 }
 
 #root {
