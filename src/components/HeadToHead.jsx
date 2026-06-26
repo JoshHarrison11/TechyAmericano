@@ -110,7 +110,7 @@ const HeadToHead = ({ onClose }) => {
 
                                 {stats.closestMatch && (
                                     <div className="rivalry-highlight">
-                                        <h4>🔥 Closest Match</h4>
+                                        <h4>Closest Match</h4>
                                         <div className="match-score">
                                             {stats.closestMatch.score[0]} - {stats.closestMatch.score[1]}
                                         </div>
@@ -120,7 +120,7 @@ const HeadToHead = ({ onClose }) => {
 
                                 {stats.biggestMatch && (
                                     <div className="rivalry-highlight">
-                                        <h4>💥 Biggest Blowout</h4>
+                                        <h4>Biggest Blowout</h4>
                                         <div className="match-score">
                                             {stats.biggestMatch.score[0]} - {stats.biggestMatch.score[1]}
                                         </div>
@@ -195,7 +195,7 @@ const HeadToHead = ({ onClose }) => {
 
                         {stats.partnershipStats.matchesPlayed > 0 && (
                             <div className="partnership-section">
-                                <h3>🤝 When Playing Together as Partners</h3>
+                                <h3>When Playing Together as Partners</h3>
                                 <p className="section-subtitle">Statistics when these players were on the same team</p>
                                 <div className="partnership-summary">
                                     <div className="partnership-stat">

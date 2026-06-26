@@ -15,7 +15,7 @@ const EloInfoModal = ({ onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content elo-info-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>📊 What is ELO Rating?</h2>
+                    <h2>What is ELO Rating?</h2>
                     <button className="close-button" onClick={onClose}>×</button>
                 </div>
 

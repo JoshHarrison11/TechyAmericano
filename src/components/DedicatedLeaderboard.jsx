@@ -91,7 +91,7 @@ const DedicatedLeaderboard = ({ onPlayerClick }) => {
                         onClick={() => setShowEloInfo(true)}
                         title="What is ELO?"
                     >
-                        ℹ️
+                        i
                     </button>
                 </div>
                 <p className="player-count">{players.length} Active Players</p>
@@ -262,7 +262,7 @@ const DedicatedLeaderboard = ({ onPlayerClick }) => {
                                     </td>
                                     <td className="col-streak mobile-hide">
                                         {player.currentStreak >= 3 && (
-                                            <span className="streak-positive">🔥{player.currentStreak}</span>
+                                            <span className="streak-positive">W{player.currentStreak}</span>
                                         )}
                                         {player.currentStreak < 3 && '-'}
                                     </td>

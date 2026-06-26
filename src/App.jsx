@@ -701,9 +701,9 @@ function App() {
                 : 'Unsynced changes — tap to retry'
             }
           >
-            {syncStatus === 'saved' && '✓ Synced'}
+            {syncStatus === 'saved' && 'Synced'}
             {syncStatus === 'syncing' && '⟳ Syncing…'}
-            {syncStatus === 'pending' && '⚠ Unsynced'}
+            {syncStatus === 'pending' && 'Unsynced'}
           </button>
           <button
               className="topbar-switch"

@@ -25,7 +25,7 @@ const ResetStatsModal = ({ groupId, onConfirm, onClose }) => {
         <div className="modal-overlay" onClick={busy ? undefined : onClose}>
             <div className="modal-content reset-stats-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>⚠️ Reset League Stats</h2>
+                    <h2>Reset League Stats</h2>
                     <button className="btn-close" onClick={onClose} disabled={busy}>&times;</button>
                 </div>
 

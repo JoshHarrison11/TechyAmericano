@@ -15,10 +15,7 @@ const PlayerCard = ({ player, stats, onClick, rank }) => {
     };
 
     const getRankMedal = () => {
-        if (!rank) return null;
-        if (rank === 1) return '🥇';
-        if (rank === 2) return '🥈';
-        if (rank === 3) return '🥉';
+        if (rank >= 1 && rank <= 3) return `medal-${rank}`;
         return null;
     };
 
@@ -53,7 +50,7 @@ const PlayerCard = ({ player, stats, onClick, rank }) => {
                 </div>
                 {rank && (
                     <div className="rank-display">
-                        {medal && <span className="rank-medal">{medal}</span>}
+                        {medal && <span className={`medal ${medal}`} aria-label={`Rank ${rank}`} />}
                         <span className="rank-position">#{rank}</span>
                     </div>
                 )}

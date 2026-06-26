@@ -97,7 +97,7 @@ const PlayerProfile = ({ playerId, onClose, onDeleted }) => {
                         <div className="elo-stat-item">
                             <span className="elo-stat-label">Trend</span>
                             <span className={`elo-stat-value ${stats.eloTrend > 0 ? 'positive' : stats.eloTrend < 0 ? 'negative' : ''}`}>
-                                {stats.eloTrend > 0 ? '🔥' : stats.eloTrend < 0 ? '📉' : '➡️'}
+                                {stats.eloTrend > 0 ? '▲ ' : stats.eloTrend < 0 ? '▼ ' : '– '}
                                 {stats.eloTrend > 0 ? '+' : ''}{stats.eloTrend}
                             </span>
                             <span className="elo-stat-date">Last 5 matches</span>
@@ -106,7 +106,7 @@ const PlayerProfile = ({ playerId, onClose, onDeleted }) => {
 
                     {stats.eloProvisional && (
                         <div className="elo-provisional-badge">
-                            ⚠️ Provisional Rating ({stats.eloMatchesForRating}/20 matches)
+                            Provisional Rating ({stats.eloMatchesForRating}/20 matches)
                         </div>
                     )}
                 </div>
@@ -155,7 +155,7 @@ const PlayerProfile = ({ playerId, onClose, onDeleted }) => {
                         </div>
                         <div className="stat-row">
                             <span>Current Streak</span>
-                            <span>{stats.currentStreak} {stats.currentStreak >= 3 && '🔥'}</span>
+                            <span>{stats.currentStreak}</span>
                         </div>
                         <div className="stat-row">
                             <span>Longest Streak</span>
@@ -166,7 +166,7 @@ const PlayerProfile = ({ playerId, onClose, onDeleted }) => {
 
                 {matchup && (
                     <div className="stats-section">
-                        <h4>⚖️ Matchup Difficulty</h4>
+                        <h4>Matchup Difficulty</h4>
                         <p className="section-subtitle">Based on {matchup.matchesAnalyzed} games · ELO at the time of each match</p>
                         <div className="stats-list">
                             <div className="stat-row">
@@ -236,7 +236,7 @@ const PlayerProfile = ({ playerId, onClose, onDeleted }) => {
 
                 {bestPartnership && (
                     <div className="stats-section best-partnership">
-                        <h4>🏆 Best Partnership</h4>
+                        <h4>Best Partnership</h4>
                         <div className="partnership-highlight">
                             <div className="partnership-name">{getPartnerName(bestPartnership.partnerId)}</div>
                             <div className="partnership-stats">
@@ -250,7 +250,7 @@ const PlayerProfile = ({ playerId, onClose, onDeleted }) => {
 
                 {matches.length > 0 && (
                     <div className="stats-section player-match-history">
-                        <h4>📋 Recent Match History</h4>
+                        <h4>Recent Match History</h4>
                         <p className="section-subtitle">Last {matches.length} matches played</p>
                         <div className="match-history-list">
                             {matches.map(match => {

@@ -219,7 +219,7 @@ Total matches: ${completedMatches.length}`;
   return (
     <div className="ai-match-report-card">
       <div className="ai-report-header">
-        <span className="ai-report-label">⚡ AI Match Report</span>
+        <span className="ai-report-label">AI Match Report</span>
         <button
           className="btn btn-primary btn-sm"
           onClick={generate}

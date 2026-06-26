@@ -126,7 +126,7 @@ const PlayerManagement = ({ onViewProfile, onClose, onResetStats }) => {
                                         className="btn-delete-player"
                                         aria-label="Delete player"
                                     >
-                                        🗑️
+                                        &times;
                                     </button>
                                 </div>
                             );
