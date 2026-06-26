@@ -6,6 +6,7 @@ import {
     getBestPartnership,
     getAllPlayers,
     getMatchesByPlayer,
+    getMatchupStats,
     deletePlayer
 } from '../utils/playerService';
 
@@ -14,8 +15,15 @@ const PlayerProfile = ({ playerId, onClose, onDeleted }) => {
     const stats = calculatePlayerStats(playerId);
     const partners = getPartnerStats(playerId);
     const bestPartnership = getBestPartnership(playerId);
+    const matchup = getMatchupStats(playerId);
     const allPlayers = getAllPlayers();
     const matches = getMatchesByPlayer(playerId).slice(0, 15); // Get last 15 matches
+
+    const matchupInsight = matchup ? (
+        matchup.avgEloAdvantage <= -25 ? '🥊 Often the underdog — frequently matched into games they’re rated to lose.'
+            : matchup.avgEloAdvantage >= 25 ? '💪 Usually favoured — typically the stronger side on court.'
+                : '⚖️ Balanced matchups on average.'
+    ) : null;
 
     if (!player) {
         return (
@@ -155,6 +163,42 @@ const PlayerProfile = ({ playerId, onClose, onDeleted }) => {
                         </div>
                     </div>
                 </div>
+
+                {matchup && (
+                    <div className="stats-section">
+                        <h4>⚖️ Matchup Difficulty</h4>
+                        <p className="section-subtitle">Based on {matchup.matchesAnalyzed} games · ELO at the time of each match</p>
+                        <div className="stats-list">
+                            <div className="stat-row">
+                                <span>Avg Partner ELO</span>
+                                <span>{matchup.avgPartnerElo}</span>
+                            </div>
+                            <div className="stat-row">
+                                <span>Avg Opponent ELO</span>
+                                <span>{matchup.avgOpponentElo}</span>
+                            </div>
+                            <div className="stat-row">
+                                <span>Avg ELO Advantage</span>
+                                <span className={matchup.avgEloAdvantage >= 0 ? 'stat-value-positive' : 'stat-value-negative'}>
+                                    {matchup.avgEloAdvantage > 0 ? '+' : ''}{matchup.avgEloAdvantage}
+                                </span>
+                            </div>
+                            <div className="stat-row">
+                                <span>Underdog Games</span>
+                                <span>{matchup.underdogMatches} ({matchup.underdogWins}-{matchup.underdogLosses})</span>
+                            </div>
+                            {matchup.underdogMatches > 0 && (
+                                <div className="stat-row">
+                                    <span>Win % as Underdog</span>
+                                    <span className={matchup.underdogWinRate >= 50 ? 'stat-value-positive' : ''}>
+                                        {matchup.underdogWinRate.toFixed(0)}%
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        {matchupInsight && <p className="section-subtitle">{matchupInsight}</p>}
+                    </div>
+                )}
 
                 <div className="stats-section">
                     <h4>Career Timeline</h4>

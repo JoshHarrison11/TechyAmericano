@@ -777,6 +777,61 @@ export const getBestPartnership = (playerId) => {
     return qualifiedPartners[0];
 };
 
+// ============================================================================
+// Matchup difficulty / strength-of-schedule
+// ============================================================================
+// For each completed 2v2 match the player was in, compare their team's ELO to
+// the opponents' — using each player's rating AT THE TIME of that match
+// (from the stored eloData), falling back to current ELO when unavailable.
+export const getMatchupStats = (playerId) => {
+    const matches = getMatchesByPlayer(playerId).filter(m => m.completed);
+    const currentElo = {};
+    getAllPlayers().forEach(p => { currentElo[p.id] = p.elo?.current || 1500; });
+
+    const eloAt = (match, id) => {
+        const r = match.eloData?.beforeRatings?.[id];
+        return typeof r === 'number' ? r : (currentElo[id] || 1500);
+    };
+
+    let n = 0;
+    let sumPartner = 0, sumOpp = 0, sumAdv = 0;
+    let underdogMatches = 0, underdogWins = 0;
+
+    matches.forEach(m => {
+        const teamIdx = m.teams[0].includes(playerId) ? 0 : 1;
+        const oppIdx = 1 - teamIdx;
+        const partnerId = m.teams[teamIdx].find(id => id !== playerId);
+        const opp = m.teams[oppIdx];
+        if (!partnerId || !opp || opp.length < 2) return; // 2v2 only
+
+        const teamElo = (eloAt(m, playerId) + eloAt(m, partnerId)) / 2;
+        const oppElo = (eloAt(m, opp[0]) + eloAt(m, opp[1])) / 2;
+
+        sumPartner += eloAt(m, partnerId);
+        sumOpp += oppElo;
+        sumAdv += teamElo - oppElo;
+        n++;
+
+        if (teamElo < oppElo) {
+            underdogMatches++;
+            if (m.score[teamIdx] > m.score[oppIdx]) underdogWins++;
+        }
+    });
+
+    if (n === 0) return null;
+
+    return {
+        matchesAnalyzed: n,
+        avgPartnerElo: Math.round(sumPartner / n),
+        avgOpponentElo: Math.round(sumOpp / n),
+        avgEloAdvantage: Math.round(sumAdv / n),
+        underdogMatches,
+        underdogWins,
+        underdogLosses: underdogMatches - underdogWins,
+        underdogWinRate: underdogMatches > 0 ? (underdogWins / underdogMatches) * 100 : 0
+    };
+};
+
 // Minimal exports for migration functions
 export const migrateExistingTournaments = () => ({ playersCreated: 0, matchesMigrated: 0 });
 export const migrateEloData = () => ({ success: true });
