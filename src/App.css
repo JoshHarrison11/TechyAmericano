@@ -142,7 +142,7 @@ main > * { width: 100%; max-width: 920px; }
   cursor: pointer; white-space: nowrap; transition: all 0.2s;
 }
 .sync-chip.saved { color: var(--text-muted); border-color: var(--border); }
-.sync-chip.syncing { color: var(--cyan); border-color: rgba(47,125,114,0.4); }
+.sync-chip.syncing { color: var(--cyan); border-color: rgba(78,194,192,0.4); }
 .sync-chip.pending { color: var(--amber); border-color: rgba(255,176,32,0.45); background: rgba(255,176,32,0.08); animation: pulse 1.8s ease-in-out infinite; }
 .sync-chip.pending:hover { background: rgba(255,176,32,0.16); }
 
@@ -667,7 +667,9 @@ h2 {
 .player-selector-controls { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
 .dropdown-container { position: relative; flex: 1; min-width: 200px; }
 .dropdown-container .btn { width: 100%; }
-.dropdown-menu { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-2); border: 1px solid var(--border-bright); border-radius: var(--radius); margin-top: 0.5rem; max-height: 300px; overflow-y: auto; z-index: 100; box-shadow: var(--shadow-lg); }
+.dropdown-menu { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-2); border: 1px solid var(--border-bright); border-radius: var(--radius); margin-top: 0.5rem; max-height: 320px; overflow-y: auto; z-index: 100; box-shadow: var(--shadow-lg); }
+.dropdown-search { position: sticky; top: 0; padding: 0.6rem; background: var(--surface-2); border-bottom: 1px solid var(--border); z-index: 1; }
+.dropdown-search .input-field { width: 100%; }
 .dropdown-item { padding: 0.8rem 1rem; cursor: pointer; transition: background 0.15s, color 0.15s; border-bottom: 1px solid var(--border); font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.9rem; }
 .dropdown-item:last-child { border-bottom: none; }
 .dropdown-item:hover { background: var(--surface-light); color: var(--primary); }
@@ -960,7 +962,7 @@ h2 {
 /* ── Competitive mode ───────────────────────────────────── */
 .competitive { width: 100%; display: flex; flex-direction: column; align-items: stretch; }
 .comp-intro { text-align: center; margin-bottom: 1rem; }
-.comp-tag { display: inline-block; font-family: var(--font-display); font-weight: 800; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cyan); background: rgba(47,125,114,0.12); border: 1px solid rgba(47,125,114,0.3); padding: 0.3rem 0.8rem; border-radius: var(--pill); }
+.comp-tag { display: inline-block; font-family: var(--font-display); font-weight: 800; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cyan); background: rgba(78,194,192,0.12); border: 1px solid rgba(78,194,192,0.3); padding: 0.3rem 0.8rem; border-radius: var(--pill); }
 .comp-section-title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text); margin-bottom: 1rem; }
 .comp-elo-mini { font-family: var(--font-display); font-weight: 800; font-size: 0.78rem; color: var(--text-muted); margin-left: 0.4rem; }
 
@@ -990,7 +992,7 @@ h2 {
 .comp-teams-preview { display: flex; align-items: stretch; gap: 0.6rem; margin-bottom: 1.25rem; }
 .comp-team-card { flex: 1; min-width: 0; background: var(--surface-light); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem; display: flex; flex-direction: column; gap: 0.35rem; align-items: center; text-align: center; }
 .comp-team-card.team-a-card { border-color: rgba(215,242,58,0.35); }
-.comp-team-card.team-b-card { border-color: rgba(47,125,114,0.35); }
+.comp-team-card.team-b-card { border-color: rgba(78,194,192,0.35); }
 .comp-team-label { font-family: var(--font-display); font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
 .team-a-card .comp-team-label { color: var(--primary); }
 .team-b-card .comp-team-label { color: var(--cyan); }
@@ -1010,10 +1012,10 @@ h2 {
 .comp-score-names { display: flex; flex-direction: column; gap: 0.15rem; text-align: center; }
 .comp-score-name { font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; }
 @media (min-width: 768px) { .comp-score-name { font-size: 1.1rem; max-width: 220px; } }
-.comp-sets-won { font-family: var(--font-display); font-weight: 900; font-size: 1.6rem; color: var(--primary); line-height: 1; }
+.comp-sets-won { font-family: var(--font-serif); font-weight: 800; font-size: 1.6rem; color: var(--primary); line-height: 1; font-variant-numeric: tabular-nums; }
 .comp-sets-won span { font-size: 0.62rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .comp-current { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-.comp-current-value { font-family: var(--font-display); font-weight: 900; font-size: 3rem; line-height: 1; color: var(--text); }
+.comp-current-value { font-family: var(--font-serif); font-weight: 800; font-size: 3rem; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
 @media (min-width: 768px) { .comp-current-value { font-size: 3.6rem; } }
 .comp-score-controls { display: flex; align-items: center; gap: 0.5rem; }
 .comp-score-controls .comp-add { width: 48px; height: 48px; font-size: 1.6rem; background: var(--grad-primary); border-color: var(--primary); color: var(--on-accent); }

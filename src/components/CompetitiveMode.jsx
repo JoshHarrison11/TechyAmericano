@@ -194,7 +194,7 @@ const CompetitiveMode = ({ onMatchComplete }) => {
         return (
             <div className="competitive">
                 <div className="comp-intro">
-                    <span className="comp-tag">🆚 Competitive</span>
+                    <span className="comp-tag">Competitive</span>
                     <p className="section-subtitle">Pick four players, draft two teams, set the format.</p>
                 </div>
 
@@ -334,14 +334,14 @@ const CompetitiveMode = ({ onMatchComplete }) => {
     return (
         <div className="competitive">
             <div className="comp-scoreboard-head">
-                <span className="comp-tag">🆚 Competitive</span>
+                <span className="comp-tag">Competitive</span>
                 {phase === 'playing' && <span className="comp-status">Set {sets.length + 1}</span>}
             </div>
 
             <div className="comp-scoreboard">
                 {renderTeam('a', teamA)}
                 <div className="comp-score-divider">
-                    <span className="comp-vs">VS</span>
+                    <span className="net-ring">Net</span>
                     <span className="comp-format-mini">Bo{config.setsToWin * 2 - 1} · to {config.gamesPerSet}</span>
                 </div>
                 {renderTeam('b', teamB)}
@@ -389,7 +389,7 @@ const CompetitiveMode = ({ onMatchComplete }) => {
             {/* Result */}
             {phase === 'done' && result && (
                 <div className="card comp-result">
-                    <div className="comp-result-banner">🏆 {(result.winner === 'A' ? teamA : teamB).map(nameOf).join(' & ')} win!</div>
+                    <div className="comp-result-banner">{(result.winner === 'A' ? teamA : teamB).map(nameOf).join(' & ')} win!</div>
                     <div className="comp-result-score">{live.a} – {live.b} sets</div>
                     <div className="comp-elo-changes">
                         {result.match.players.map(id => {
