@@ -717,7 +717,7 @@ function App() {
                   setActiveGroupId(null);
               }}
           >
-              Switch League
+              Switch
           </button>
         </div>
       </div>
