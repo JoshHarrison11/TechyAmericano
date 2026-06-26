@@ -105,6 +105,7 @@ main > * { width: 100%; max-width: 920px; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.6rem;
   width: 100%;
   margin-bottom: 0.5rem;
   padding: 0.6rem 0.85rem;
@@ -115,9 +116,11 @@ main > * { width: 100%; max-width: 920px; }
 }
 .topbar-league {
   display: inline-flex; align-items: center; gap: 0.45rem;
+  flex: 1; min-width: 0; overflow: hidden; white-space: nowrap;
   font-family: var(--font-display); font-size: 0.82rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
 }
+.topbar-league strong { overflow: hidden; text-overflow: ellipsis; }
 .topbar-league .dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--primary); box-shadow: var(--glow-soft);
@@ -132,7 +135,8 @@ main > * { width: 100%; max-width: 920px; }
 }
 .topbar-switch:hover { color: var(--primary-light); }
 
-.topbar-right { display: inline-flex; align-items: center; gap: 0.6rem; }
+.topbar-right { display: inline-flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+.topbar-switch { white-space: nowrap; }
 .sync-chip {
   display: inline-flex; align-items: center; gap: 0.3rem;
   font-family: var(--font-display); font-weight: 700; font-size: 0.68rem;
@@ -704,8 +708,10 @@ td.player-name > .tier-chip { margin-right: 0.4rem; vertical-align: -3px; }
 .partnership-stat span:last-child { display: block; font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: var(--primary); }
 
 /* ── Player selector ────────────────────────────────────── */
-.player-selector-controls { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.dropdown-container { position: relative; flex: 1; min-width: 200px; }
+.player-selector-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.5rem; }
+.player-selector-controls > .dropdown-container { grid-column: 1 / -1; }
+.player-selector-controls > .btn { width: 100%; }
+.dropdown-container { position: relative; min-width: 0; }
 .dropdown-container .btn { width: 100%; }
 .dropdown-menu { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-2); border: 1px solid var(--border-bright); border-radius: var(--radius); margin-top: 0.5rem; max-height: 320px; overflow-y: auto; z-index: 100; box-shadow: var(--shadow-lg); }
 .dropdown-search { position: sticky; top: 0; padding: 0.6rem; background: var(--surface-2); border-bottom: 1px solid var(--border); z-index: 1; }
