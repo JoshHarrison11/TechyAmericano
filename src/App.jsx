@@ -978,13 +978,6 @@ function App() {
       {!gameStarted && (
         <nav className="bottom-nav">
           <button
-            className={`bottom-nav-item ${currentView === 'tournament' ? 'active' : ''}`}
-            onClick={() => setCurrentView('tournament')}
-          >
-            <Icon name="racket" className="bn-icon" size={23} />
-            <span className="bn-label">Play</span>
-          </button>
-          <button
             className={`bottom-nav-item ${currentView === 'leaderboard' ? 'active' : ''}`}
             onClick={() => setCurrentView('leaderboard')}
           >
@@ -997,6 +990,14 @@ function App() {
           >
             <Icon name="swords" className="bn-icon" size={23} />
             <span className="bn-label">Versus</span>
+          </button>
+          <button
+            className={`bottom-nav-item nav-primary ${currentView === 'tournament' ? 'active' : ''}`}
+            onClick={() => setCurrentView('tournament')}
+            aria-label="Americano tournament"
+          >
+            <span className="nav-primary-circle"><Icon name="racket" size={26} /></span>
+            <span className="bn-label">Americano</span>
           </button>
           <button
             className={`bottom-nav-item ${currentView === 'players' ? 'active' : ''}`}
