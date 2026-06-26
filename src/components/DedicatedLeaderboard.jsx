@@ -53,15 +53,15 @@ const DedicatedLeaderboard = ({ onPlayerClick }) => {
     }, [sortBy]);
 
     const getTrendIcon = (trend) => {
-        if (trend > 5) return '🔥';  // Trending up
-        if (trend < -5) return '💩';  // Trending down
-        return '😐';  // Stable
+        if (trend > 5) return '▲';  // Trending up
+        if (trend < -5) return '▼';  // Trending down
+        return '–';  // Stable
     };
 
     const getTrendColor = (trend) => {
-        if (trend > 0) return '#4caf50';
-        if (trend < 0) return '#f44336';
-        return '#999';
+        if (trend > 0) return 'var(--primary)';
+        if (trend < 0) return 'var(--danger)';
+        return 'var(--text-muted)';
     };
 
     const getPodiumClass = (index) => {
@@ -76,7 +76,7 @@ const DedicatedLeaderboard = ({ onPlayerClick }) => {
     const getStreakDisplay = (streak) => {
         // Only show win streaks of 3 or more
         if (streak >= 3) {
-            return <span className="streak-positive">🔥{streak}</span>;
+            return <span className="streak-positive">W{streak}</span>;
         }
         return null;
     };
@@ -85,7 +85,7 @@ const DedicatedLeaderboard = ({ onPlayerClick }) => {
         <div className="dedicated-leaderboard">
             <div className="leaderboard-header">
                 <div className="header-title">
-                    <h2>🏆 Leaderboard</h2>
+                    <h2>Leaderboard</h2>
                     <button
                         className="info-icon-button"
                         onClick={() => setShowEloInfo(true)}
@@ -124,9 +124,9 @@ const DedicatedLeaderboard = ({ onPlayerClick }) => {
                             <div className="card-header">
                                 <div className="card-rank">
                                     #{index + 1}
-                                    {index === 0 && sortBy === 'elo' && <span className="medal">🥇</span>}
-                                    {index === 1 && sortBy === 'elo' && <span className="medal">🥈</span>}
-                                    {index === 2 && sortBy === 'elo' && <span className="medal">🥉</span>}
+                                    {index === 0 && sortBy === 'elo' && <span className="medal medal-1" aria-label="1st" />}
+                                    {index === 1 && sortBy === 'elo' && <span className="medal medal-2" aria-label="2nd" />}
+                                    {index === 2 && sortBy === 'elo' && <span className="medal medal-3" aria-label="3rd" />}
                                 </div>
                                 <div className="card-player-info">
                                     <span className="player-avatar">{player.name.charAt(0).toUpperCase()}</span>
@@ -212,9 +212,9 @@ const DedicatedLeaderboard = ({ onPlayerClick }) => {
                                 >
                                     <td className="col-rank">
                                         {index + 1}
-                                        {index === 0 && sortBy === 'elo' && <span className="medal">🥇</span>}
-                                        {index === 1 && sortBy === 'elo' && <span className="medal">🥈</span>}
-                                        {index === 2 && sortBy === 'elo' && <span className="medal">🥉</span>}
+                                        {index === 0 && sortBy === 'elo' && <span className="medal medal-1" aria-label="1st" />}
+                                        {index === 1 && sortBy === 'elo' && <span className="medal medal-2" aria-label="2nd" />}
+                                        {index === 2 && sortBy === 'elo' && <span className="medal medal-3" aria-label="3rd" />}
                                     </td>
                                     <td className="col-name">
                                         <div className="player-name-cell">

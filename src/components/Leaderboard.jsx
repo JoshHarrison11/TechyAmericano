@@ -97,10 +97,10 @@ const Leaderboard = ({ players, history, onPlayerClick, allPlayers }) => {
                 >
                   {player.name}
                 </span>
-                {index === 0 && <span className="crown-badge"> 👑</span>}
+                {index === 0 && <span className="crown-badge medal-1" aria-label="Leader" />}
                 {player.currentStreak >= 3 && (
                   <span className="streak-badge">
-                    🔥 {player.currentStreak}
+                    W{player.currentStreak}
                   </span>
                 )}
               </td>
