@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import Icon from './components/Icon';
 import PlayerSelector from './components/PlayerSelector';
 import MatchCard from './components/MatchCard';
 import Leaderboard from './components/Leaderboard';
@@ -723,7 +724,8 @@ function App() {
 
       <header>
         <div className="brand-row">
-          <h1>🎾 Techy Americano</h1>
+          <Icon name="racket" className="brand-mark" size={32} strokeWidth={2.25} />
+          <h1>Techy Americano</h1>
         </div>
         {gameStarted && !sessionEnded && (
           <div className="live-pill">
@@ -751,9 +753,10 @@ function App() {
                   <div className="history-button-container">
                     <button
                       onClick={() => setShowHistory(true)}
-                      className="btn btn-secondary btn-lg"
+                      className="btn btn-secondary btn-lg btn-with-icon"
                     >
-                      📜 Tournament History ({savedTournaments.length})
+                      <Icon name="history" size={18} />
+                      Tournament History ({savedTournaments.length})
                     </button>
                   </div>
                 )}
@@ -763,7 +766,7 @@ function App() {
         ) : sessionEnded ? (
           <div className="tournament-view">
             <div className="session-ended-header">
-              <h2>🏆 Tournament Complete</h2>
+              <h2><Icon name="trophy" size={26} className="h2-icon" /> Tournament Complete</h2>
               <p className="session-subtitle">Review the results below</p>
             </div>
 
@@ -978,21 +981,21 @@ function App() {
             className={`bottom-nav-item ${currentView === 'tournament' ? 'active' : ''}`}
             onClick={() => setCurrentView('tournament')}
           >
-            <span className="bn-icon">🎾</span>
+            <Icon name="racket" className="bn-icon" size={23} />
             <span className="bn-label">Play</span>
           </button>
           <button
             className={`bottom-nav-item ${currentView === 'leaderboard' ? 'active' : ''}`}
             onClick={() => setCurrentView('leaderboard')}
           >
-            <span className="bn-icon">🏆</span>
+            <Icon name="trophy" className="bn-icon" size={23} />
             <span className="bn-label">Ranks</span>
           </button>
           <button
             className={`bottom-nav-item ${currentView === 'competitive' ? 'active' : ''}`}
             onClick={() => setCurrentView('competitive')}
           >
-            <span className="bn-icon">🆚</span>
+            <Icon name="swords" className="bn-icon" size={23} />
             <span className="bn-label">Versus</span>
           </button>
           <button
@@ -1002,7 +1005,7 @@ function App() {
               setShowPlayerManagement(true);
             }}
           >
-            <span className="bn-icon">👥</span>
+            <Icon name="users" className="bn-icon" size={23} />
             <span className="bn-label">Players</span>
           </button>
           <button
@@ -1012,7 +1015,7 @@ function App() {
               setShowHeadToHead(true);
             }}
           >
-            <span className="bn-icon">⚔️</span>
+            <Icon name="compare" className="bn-icon" size={23} />
             <span className="bn-label">H2H</span>
           </button>
         </nav>
