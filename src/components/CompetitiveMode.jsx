@@ -319,12 +319,14 @@ const CompetitiveMode = ({ onMatchComplete }) => {
                 </div>
                 <div className="comp-sets-won">{team === 'a' ? live.a : live.b} <span>sets</span></div>
                 <div className="comp-current">
-                    <div className="comp-current-value">{games[team]}</div>
-                    {phase === 'playing' && !pendingEnd && (
+                    {phase === 'playing' && !pendingEnd ? (
                         <div className="comp-score-controls">
                             <button className="score-btn" onClick={() => removePoint(team)} disabled={games[team] === 0}>−</button>
+                            <div className="comp-current-value">{games[team]}</div>
                             <button className="score-btn comp-add" onClick={() => addPoint(team)}>+</button>
                         </div>
+                    ) : (
+                        <div className="comp-current-value">{games[team]}</div>
                     )}
                 </div>
             </div>
