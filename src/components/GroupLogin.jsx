@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Icon from './Icon';
 import { supabase } from '../utils/supabaseClient';
 
 export default function GroupLogin({ onLogin }) {
@@ -47,7 +48,10 @@ export default function GroupLogin({ onLogin }) {
     return (
         <div className="group-login-screen">
             <div className="group-login-card">
-                <div className="group-login-logo">🎾 Techy Americano</div>
+                <div className="group-login-logo">
+                    <Icon name="racket" size={15} strokeWidth={2.25} />
+                    Techy Americano
+                </div>
                 <h1 className="group-login-title">{isCreating ? 'New League' : 'Enter League'}</h1>
                 <p className="group-login-sub">
                     {isCreating

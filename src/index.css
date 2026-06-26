@@ -2,7 +2,7 @@
   font-family: 'Barlow', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -16,8 +16,8 @@ html, body { margin: 0; padding: 0; }
 body {
   min-width: 320px;
   min-height: 100vh;
-  background-color: #070a12;
-  color: #f5f7fa;
+  background-color: #efe5d3;
+  color: #33291f;
 }
 
 #root {
